@@ -1,0 +1,27 @@
+rc=0 timed_out=False sid=20260819_145420_8113e1 wall=13.8s
+
+SQLite: WAL vs Rollback Journal (single writer, multiple readers, ~50 small writes/sec)
+
+FACT: In rollback-journal mode, writers take an exclusive lock on the whole database file for the duration of the transaction, blocking all readers until commit. (Verify: SQLite docs "File Locking And Concurrency In SQLite Version 3.")
+
+FACT: In WAL mode, writers append to a separate -wal file and readers read a snapshot of the main db + wal, so one writer and many readers can proceed concurrently without blocking each other. (Verify: SQLite docs "Write-Ahead Logging.")
+
+FACT: WAL requires checkpointing (default auto-checkpoint at 1000 pages) to fold the wal back into the main db file; this adds periodic I/O. (Verify: same WAL doc, pragma wal_autocheckpoint.)
+
+BELIEF: At 50 small writes/sec, rollback-journal's per-transaction fsync/lock overhead will noticeably starve readers, since even sub-millisecond write locks compound with reader contention at this frequency. Would change my mind if readers are infrequent/tolerant of brief stalls, or if writes are already batched into few transactions/sec.
+
+BELIEF: WAL mode will handle this workload comfortably with negligible reader-blocking, since 50 writes/sec is well below the write throughput WAL is designed for; the main risk is unbounded wal-file growth if a long-lived read transaction prevents checkpointing. Would change my mind if the environment is one where WAL isn't supported (network filesystems, some old Android/iOS sandboxes) — WAL requires shared memory and doesn't work reliably over NFS.
+
+Recommendation (BELIEF): Use WAL mode for this workload — it directly targets single-writer/multi-reader concurrency with minimal reader blocking, and 50 records/sec is far under typical WAL throughput ceilings.
+
+INTENT: If you want, I can draft the PRAGMA setup (journal_mode=WAL, synchronous=NORMAL, wal_autocheckpoint tuning) and a quick benchmark script comparing both modes under this exact read/write pattern — say the word and I'll build it.
+
+
+STDERR:
+[33m⚠ Deprecated .env settings detected:[0m
+  [33m⚠[0m TERMINAL_CWD=/Users/conno/Documents/golden agents/bakeoff/results/runs/gt-research_cloudeval_r1_20260819_145419_970743/proj found in .env — this is deprecated.
+  [2mMove to config.yaml instead:  terminal:\n    cwd: /your/project/path[0m
+  [2mThen remove the old entries from ~/.hermes/profiles/gt-research/.env[0m
+
+
+session_id: 20260819_145420_8113e1

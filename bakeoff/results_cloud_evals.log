@@ -1,0 +1,13 @@
+[gt-research] rep1: PASS (13.8s)
+[gt-research] rep2: PASS (13.1s)
+[gt-infra] rep1: PASS (24.2s)
+[gt-infra] rep2: PASS (29.0s)
+[gt-bakeoff] rep1: PASS (7.1s)
+[gt-bakeoff] rep2: PASS (6.6s)
+[gt-review] rep1: PASS (6.1s)
+[gt-review] rep2: PASS (6.3s)
+role           n  verdicts
+gt-bakeoff     3  ['PASS', 'PASS', 'PASS']
+gt-infra       2  ['PASS', 'PASS']
+gt-research    2  ['PASS', 'PASS']
+gt-review      2  ['PASS', 'PASS']

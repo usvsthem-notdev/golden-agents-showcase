@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="An orchestrated simulation of a goldthread project spinning up — the gold thesis gets written and sealed, spoke windows come online, then you can try changing the thesis yourself: blocked as an agent, allowed as a human.">
+<title>goldthread spin-up</title>
+<style>
+  :root {
+    --ground: #F7F4EC;
+    --surface: #FFFFFF;
+    --surface-2: #F1ECDF;
+    --ink: #1F1B12;
+    --ink-muted: #6B6252;
+    --ink-faint: #948A72;
+    --hairline: #E4DCC7;
+    --gold: #B8862E;
+    --gold-ink: #7A5A1E;
+    --gold-wash: rgba(184,134,46,0.10);
+    --good: #3F8F5C;
+    --good-wash: rgba(63,143,92,0.12);
+    --stopgap: #4C6FA6;
+    --stopgap-wash: rgba(76,111,166,0.12);
+    --critical: #B8483A;
+    --critical-wash: rgba(184,72,58,0.12);
+    --warn: #A65D2E;
+    --warn-wash: rgba(166,93,46,0.12);
+    --shadow: rgba(60,50,20,0.12);
+
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Songti SC", serif;
+    --font-body: "Avenir Next", "Century Gothic", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14120C; --surface: #1D1A12; --surface-2: #262117;
+      --ink: #F2EDDC; --ink-muted: #B3A98D; --ink-faint: #7C7360;
+      --hairline: #332C1D; --gold: #E0B563; --gold-ink: #F0CD8A;
+      --gold-wash: rgba(224,181,99,0.12);
+      --good: #74C68F; --good-wash: rgba(116,198,143,0.14);
+      --stopgap: #8FB0E8; --stopgap-wash: rgba(143,176,232,0.14);
+      --critical: #E38C7C; --critical-wash: rgba(227,140,124,0.14);
+      --warn: #D89664; --warn-wash: rgba(216,150,100,0.14);
+      --shadow: rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14120C; --surface: #1D1A12; --surface-2: #262117;
+    --ink: #F2EDDC; --ink-muted: #B3A98D; --ink-faint: #7C7360;
+    --hairline: #332C1D; --gold: #E0B563; --gold-ink: #F0CD8A;
+    --gold-wash: rgba(224,181,99,0.12);
+    --good: #74C68F; --good-wash: rgba(116,198,143,0.14);
+    --stopgap: #8FB0E8; --stopgap-wash: rgba(143,176,232,0.14);
+    --critical: #E38C7C; --critical-wash: rgba(227,140,124,0.14);
+    --warn: #D89664; --warn-wash: rgba(216,150,100,0.14);
+    --shadow: rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  .page { max-width: 980px; margin: 0 auto; padding: 40px 24px 70px; }
+
+  header.top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 16px;
+    padding-bottom: 20px; margin-bottom: 34px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  header.top .kicker {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--stopgap);
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  header.top .kicker .badge {
+    background: var(--stopgap-wash); color: var(--stopgap);
+    padding: 2px 7px; border-radius: 4px; font-size: 0.68rem;
+  }
+  header.top h1 { font-family: var(--font-display); font-weight: 600; font-size: 2rem; margin: 0; text-wrap: balance; }
+  header.top .sub { font-size: 0.86rem; color: var(--ink-muted); margin-top: 4px; max-width: 46ch; }
+
+  .controls { display: flex; gap: 8px; flex-shrink: 0; }
+  button.spin {
+    font-family: var(--font-mono); font-size: 0.76rem;
+    background: var(--gold); color: var(--surface); border: none;
+    padding: 10px 18px; border-radius: 999px; cursor: pointer;
+    box-shadow: 0 2px 6px var(--shadow);
+  }
+  button.replay {
+    font-family: var(--font-mono); font-size: 0.76rem;
+    background: none; color: var(--ink-muted); border: 1px solid var(--hairline);
+    padding: 10px 16px; border-radius: 999px; cursor: pointer;
+    transition: opacity 200ms ease;
+  }
+  /* Real `disabled` attribute, not opacity+pointer-events — those block
+     clicks but not keyboard Tab focus, which would let a keyboard user
+     land on an invisible, inert button before the first run finishes. */
+  button.replay:disabled { opacity: 0; cursor: default; }
+  button.spin:focus-visible, button.replay:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ---- stage 1: the request ---- */
+  .stage { margin-bottom: 36px; }
+  .stage-label {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px;
+    opacity: 0; transform: translateY(4px);
+  }
+  .request-bubble {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+    padding: 16px 20px; max-width: 480px;
+    font-family: var(--font-display); font-size: 1.05rem;
+    opacity: 0; transform: translateY(8px);
+  }
+  .request-bubble .from {
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block;
+  }
+  /* Every stage div carries both class="stage" and its own id; .on gets
+     added to that same element. One shared rule covers every stage's
+     label — a previous version of this file only wired the reveal for
+     stage-request specifically, which silently left stage-thesis's and
+     stage-hub's labels invisible forever (nothing ever set their
+     opacity), since they never matched an id-specific selector. */
+  .stage.on .stage-label { opacity: 1; transform: none; transition: opacity 500ms ease, transform 500ms ease; }
+  #stage-request.on .request-bubble { opacity: 1; transform: none; transition: opacity 500ms ease, transform 500ms ease; }
+
+  /* ---- stage 2: the thesis ---- */
+  .thesis-card {
+    background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 12px;
+    padding: 22px 26px; opacity: 0; transform: translateY(10px);
+    transition: opacity 550ms ease, transform 550ms ease, border-color 400ms ease, box-shadow 400ms ease;
+  }
+  #stage-thesis.on .thesis-card { opacity: 1; transform: none; }
+  .thesis-card .th-name {
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .thesis-card h2 { font-family: var(--font-display); font-size: 1.3rem; margin: 4px 0 12px; }
+  .thesis-card .problem { font-size: 0.92rem; line-height: 1.6; color: var(--ink-muted); max-width: 60ch; margin: 0 0 14px; }
+  .thesis-card .dod { margin: 0 0 16px; padding-left: 1.2em; }
+  .thesis-card .dod li { font-size: 0.86rem; line-height: 1.55; color: var(--ink-muted); margin-bottom: 5px; }
+  .rules-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rule-chip {
+    font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted);
+    background: var(--surface-2); padding: 4px 9px; border-radius: 999px;
+    opacity: 0; transform: scale(0.9);
+  }
+  #stage-thesis.on .rule-chip {
+    opacity: 1; transform: none;
+    transition: opacity 350ms ease, transform 350ms ease;
+  }
+  #stage-thesis.on .rule-chip:nth-child(1) { transition-delay: 60ms; }
+  #stage-thesis.on .rule-chip:nth-child(2) { transition-delay: 120ms; }
+  #stage-thesis.on .rule-chip:nth-child(3) { transition-delay: 180ms; }
+  #stage-thesis.on .rule-chip:nth-child(4) { transition-delay: 240ms; }
+  #stage-thesis.on .rule-chip:nth-child(5) { transition-delay: 300ms; }
+  #stage-thesis.on .rule-chip:nth-child(6) { transition-delay: 360ms; }
+
+  .seal-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px;
+    padding-top: 16px; border-top: 1px solid var(--hairline);
+  }
+  .seal-badge {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid var(--ink-faint); color: var(--ink-faint);
+    display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
+    transition: border-color 400ms ease, color 400ms ease, transform 400ms cubic-bezier(.34,1.56,.64,1), background-color 400ms ease;
+  }
+  .seal-text { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); transition: color 400ms ease; }
+  .thesis-card.sealed { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+  .thesis-card.sealed .seal-badge { border-color: var(--gold); color: var(--gold-ink); background: var(--gold-wash); transform: scale(1.12); }
+  .thesis-card.sealed .seal-text { color: var(--gold-ink); }
+
+  /* ---- stage 3: hub + spokes ---- */
+  .constellation { position: relative; }
+  .grid {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;
+  }
+  .threads { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+  .threads path { fill: none; stroke: var(--gold); stroke-width: 1.4; stroke-dasharray: 3 4; opacity: 0; transition: opacity 500ms ease; }
+  #stage-hub.on .threads path { opacity: 0.55; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 14px 15px 13px; min-height: 108px; min-width: 0;
+    display: flex; flex-direction: column; gap: 6px;
+    opacity: 0; transform: translateY(10px) scale(0.97);
+    transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.8,.3,1);
+  }
+  /* 8 cards: PM hub appears first (0ms — "wakes up"), then the 7 spokes
+     fan out at a steady 80ms step. nth-of-type(5) is the hub, so it's
+     covered by .card.hub instead of a numbered rule. Placement is pure
+     auto-flow — no inline grid-column/row, so the mobile media query can
+     actually reflow to 2 columns. */
+  #stage-hub.on .card { opacity: 1; transform: none; }
+  #stage-hub.on .card:nth-of-type(1) { transition-delay: 80ms; }
+  #stage-hub.on .card:nth-of-type(2) { transition-delay: 160ms; }
+  #stage-hub.on .card:nth-of-type(3) { transition-delay: 240ms; }
+  #stage-hub.on .card:nth-of-type(4) { transition-delay: 320ms; }
+  #stage-hub.on .card.hub { transition-delay: 0ms; }
+  #stage-hub.on .card:nth-of-type(6) { transition-delay: 400ms; }
+  #stage-hub.on .card:nth-of-type(7) { transition-delay: 480ms; }
+  #stage-hub.on .card:nth-of-type(8) { transition-delay: 560ms; }
+
+  .card.board-card {
+    background: var(--surface-2); align-items: center; justify-content: center;
+  }
+  .card.hub {
+    background: linear-gradient(160deg, var(--gold-wash), var(--surface) 60%);
+    border-color: var(--gold); align-items: center; text-align: center; justify-content: center;
+  }
+  .card.hub .seal { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-display);
+    font-size: 0.95rem; color: var(--gold-ink); margin-bottom: 2px; }
+  .card.hub .role { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+  .card.hub .sub { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-muted); }
+
+  .card .role-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .card .role { font-family: var(--font-display); font-size: 0.98rem; font-weight: 600; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 0.64rem;
+    padding: 2px 7px; border-radius: 5px; background: var(--surface-2); color: var(--ink-muted); width: fit-content; }
+  .pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .pill.local .dot { background: var(--good); }
+  .pill.cloud .dot { background: var(--stopgap); }
+  .card .task { font-size: 0.78rem; color: var(--ink-muted); line-height: 1.45; margin-top: auto; }
+  .card .task b { color: var(--ink); font-weight: 600; }
+
+  /* ---- stage 4: summary ---- */
+  .summary {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 16px 22px; margin-top: 34px;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 500ms ease, transform 500ms ease;
+  }
+  #stage-summary.on .summary { opacity: 1; transform: none; }
+  .summary .stats { display: flex; gap: 22px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-muted); }
+  .summary .stats b { color: var(--ink); font-weight: 600; }
+  .summary .disclaimer {
+    font-family: var(--font-mono); font-size: 0.68rem; color: var(--stopgap);
+    background: var(--stopgap-wash); padding: 4px 10px; border-radius: 999px;
+  }
+
+  /* ---- shared chip ---- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.03em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.good { color: var(--good); background: var(--good-wash); }
+  .chip.critical { color: var(--critical); background: var(--critical-wash); }
+  .chip.warn { color: var(--warn); background: var(--warn-wash); }
+
+  /* ---- stage 4: can the thesis change? ---- */
+  .amend-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 500ms ease, transform 500ms ease;
+  }
+  #stage-amend.on .amend-grid { opacity: 1; transform: none; }
+
+  .lane { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px; }
+  .lane-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .lane-title { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; }
+  .lane-sub { font-size: 0.82rem; color: var(--ink-muted); line-height: 1.5; margin: 0 0 14px; }
+  .try-btn {
+    font-family: var(--font-mono); font-size: 0.72rem; background: none; color: var(--ink);
+    border: 1px solid var(--hairline); padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .try-btn:hover:not(:disabled) { background: var(--surface-2); }
+  .try-btn:disabled { color: var(--ink-faint); cursor: default; }
+  .try-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .lane-stage { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  .tool-call {
+    font-family: var(--font-mono); font-size: 0.74rem; background: var(--surface-2);
+    overflow-wrap: anywhere;
+    border-radius: 6px; padding: 10px 12px; line-height: 1.5;
+    opacity: 0; transform: translateY(4px); transition: opacity 350ms ease, transform 350ms ease;
+  }
+  .agent-lane.playing .tool-call { opacity: 1; transform: none; }
+  .tool-call .tc-label {
+    display: block; color: var(--ink-faint); text-transform: uppercase;
+    letter-spacing: 0.04em; font-size: 0.62rem; margin-bottom: 4px;
+  }
+  .tool-call code { color: var(--ink); }
+  .tool-call s { color: var(--critical); text-decoration-color: var(--critical); }
+  .tool-call.shake { animation: shake 420ms ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(3px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(1px); }
+  }
+
+  .block-result {
+    border-left: 2px solid var(--critical); background: var(--critical-wash); border-radius: 4px;
+    padding: 10px 12px; font-size: 0.8rem; line-height: 1.55; color: var(--ink-muted);
+    opacity: 0; transform: translateY(4px); transition: opacity 350ms ease, transform 350ms ease;
+  }
+  .agent-lane.playing .block-result { opacity: 1; transform: none; transition-delay: 550ms; }
+  .block-result .br-label {
+    display: block; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--critical); margin-bottom: 4px;
+  }
+
+  .escalation {
+    display: flex; flex-direction: column; gap: 8px;
+    opacity: 0; transform: translateY(4px); transition: opacity 350ms ease, transform 350ms ease;
+  }
+  .agent-lane.playing .escalation { opacity: 1; transform: none; transition-delay: 1300ms; }
+  .esc-item { background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+  .esc-item .esc-tag {
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--warn);
+    display: inline-block; margin-bottom: 3px;
+  }
+  .esc-item p { margin: 0; font-size: 0.78rem; color: var(--ink-muted); line-height: 1.5; }
+
+  .term-line {
+    font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-muted);
+    overflow-wrap: anywhere;
+    opacity: 0; transform: translateY(4px); transition: opacity 300ms ease, transform 300ms ease;
+  }
+  .human-lane.playing .term-line.t1 { opacity: 1; transform: none; }
+  .human-lane.playing .term-line.t2 { opacity: 1; transform: none; transition-delay: 1450ms; }
+  .human-lane.playing .term-line.t3 { opacity: 1; transform: none; transition-delay: 1750ms; }
+
+  @keyframes add-in {
+    0% { opacity: 0; transform: translateX(-4px); background-color: var(--good-wash); }
+    18% { opacity: 1; transform: none; background-color: var(--good-wash); }
+    100% { opacity: 1; transform: none; background-color: transparent; }
+  }
+  .thesis-card .dod li.dod-added { animation: add-in 2400ms ease both; border-radius: 4px; padding: 2px 6px; margin-left: -6px; }
+
+  .amend-note { font-family: var(--font-mono); font-size: 0.68rem; color: var(--good); flex-basis: 100%; }
+
+
+  /* ---- PM window: build graphic + kanban ---- */
+  .pm-open {
+    font-family: var(--font-mono); font-size: 0.64rem;
+    background: none; color: var(--gold-ink);
+    border: 1px solid var(--gold); border-radius: 999px;
+    padding: 4px 10px; margin-top: 6px; cursor: pointer;
+  }
+  .pm-open:hover:not(:disabled) { background: var(--gold-wash); }
+  .pm-open:disabled { opacity: 0.4; cursor: default; }
+  .pm-open:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Windows open FULL-SCREEN: the point of tapping a window is to get it out
+     of the grid and into full attention; the close button returns you to the
+     whole view. dvh (with a vh fallback) so mobile browser chrome doesn't
+     crop the bottom of the panel. */
+  dialog.win {
+    width: 100vw; max-width: 100vw;
+    height: 100vh; height: 100dvh; max-height: 100dvh;
+    margin: 0; padding: 0; border: none; border-radius: 0;
+    background: var(--ground); color: var(--ink); overflow: hidden;
+  }
+  dialog.win::backdrop { background: var(--ground); }
+  .win-inner { display: flex; flex-direction: column; height: 100%; }
+
+  .win-head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--hairline);
+    background: linear-gradient(160deg, var(--gold-wash), transparent 70%);
+    flex-shrink: 0;
+  }
+  .win-kicker {
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--gold-ink); margin-bottom: 3px;
+  }
+  .win-head h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; margin: 0; }
+  .win-close {
+    font-size: 1.5rem; line-height: 1; background: none; border: 1px solid var(--hairline);
+    color: var(--ink-muted); cursor: pointer; border-radius: 999px;
+    min-width: 44px; min-height: 44px; flex-shrink: 0;
+  }
+  .win-close:hover { color: var(--ink); background: var(--surface-2); }
+  .win-close:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .win-body { flex: 1 1 auto; overflow-y: auto; padding: 22px; }
+  .win-content { max-width: 940px; margin: 0 auto; }
+
+  .win-content h3 { font-family: var(--font-display); font-size: 1rem; margin: 22px 0 8px; color: var(--gold-ink); }
+  .win-content h3:first-child { margin-top: 0; }
+  .win-content > p { font-size: 0.9rem; line-height: 1.6; color: var(--ink-muted); margin: 0 0 10px; max-width: 66ch; }
+  .win-content ul { margin: 0 0 12px; padding-left: 1.2em; }
+  .win-content li { font-size: 0.88rem; line-height: 1.55; color: var(--ink-muted); margin-bottom: 6px; max-width: 64ch; }
+  .win-mono {
+    font-family: var(--font-mono); font-size: 0.76rem; background: var(--surface-2);
+    border-radius: 7px; padding: 12px 14px; line-height: 1.6; margin: 0 0 12px;
+    overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink);
+  }
+  .lbl { font-family: var(--font-mono); font-size: 0.66rem; padding: 1px 6px; border-radius: 4px; }
+  .lbl.fact { color: var(--good); background: var(--good-wash); }
+  .lbl.belief { color: var(--warn); background: var(--warn-wash); }
+  .lbl.intent { color: var(--stopgap); background: var(--stopgap-wash); }
+  .score-wrap { overflow-x: auto; margin-bottom: 12px; }
+  table.score { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 420px; }
+  table.score th, table.score td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--hairline); }
+  table.score th { font-family: var(--font-mono); font-size: 0.64rem; text-transform: uppercase; color: var(--ink-faint); font-weight: 400; letter-spacing: 0.04em; }
+  table.score td { color: var(--ink-muted); }
+  table.score td.best { color: var(--good); font-weight: 600; }
+  table.score td:first-child { color: var(--ink); }
+
+  /* Cards advertise that they open. */
+  .card[data-node], .card.hub { cursor: pointer; }
+  .card[data-node]:hover, .card.hub:hover { border-color: var(--gold); }
+  .card[data-node]:focus-visible, .card.hub:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .grid-hint {
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint);
+    margin: 12px 0 0; text-align: center; letter-spacing: 0.03em;
+  }
+  .pm-section-label {
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px;
+  }
+  .build-wrap { overflow-x: auto; margin-bottom: 26px; }
+  .build-wrap svg { display: block; min-width: 560px; width: 100%; height: auto; }
+  .build-note { font-size: 0.78rem; color: var(--ink-muted); margin: 10px 0 0; line-height: 1.5; }
+
+  /* Wide board scrolls inside its own container — the page never does. */
+  .board-scroll { overflow-x: auto; padding-bottom: 6px; }
+  .scroll-hint { display: none; }
+  .board { display: flex; gap: 12px; min-width: 760px; align-items: flex-start; }
+  .col { flex: 1 1 0; min-width: 142px; }
+  .col-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--ink-muted);
+    padding: 0 2px 7px; border-bottom: 1px solid var(--hairline); margin-bottom: 9px;
+  }
+  .col-head .n {
+    background: var(--surface-2); color: var(--ink); border-radius: 999px;
+    padding: 1px 6px; font-size: 0.62rem; font-variant-numeric: tabular-nums;
+  }
+  .col.is-blocked .col-head { color: var(--critical); border-bottom-color: var(--critical); }
+  .col.is-done .col-head { color: var(--good); border-bottom-color: var(--good); }
+
+  .ticket {
+    background: var(--surface-2); border-radius: 7px; padding: 9px 10px;
+    margin-bottom: 8px; border-left: 2px solid transparent;
+  }
+  .ticket p { margin: 0 0 6px; font-size: 0.79rem; line-height: 1.4; color: var(--ink); }
+  .ticket .who {
+    font-family: var(--font-mono); font-size: 0.62rem; color: var(--ink-muted);
+  }
+  .ticket.blocked { border-left-color: var(--critical); }
+  .ticket.blocked .who { color: var(--critical); }
+  .ticket.done p { color: var(--ink-muted); }
+  .ticket.done .who { color: var(--good); }
+  .ticket.wip { border-left-color: var(--gold); }
+
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .amend-grid { grid-template-columns: 1fr; }
+    header.top { flex-direction: column; }
+    /* Bottom-aligning .task gives desktop rows a shared baseline, but at
+       2 columns the text lengths diverge enough to open ~60px voids in the
+       middle of short cards. Let the text follow its title instead. */
+    .card .task { margin-top: 8px; }
+    .card { min-height: 0; }
+    /* A long role name and its pill can't share ~160px without the name
+       breaking mid-phrase ("Infra /" ⏎ "DevOps"). Stack them so the name
+       gets the full card width. */
+    .card .role-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+    /* Wrap the summary as whole phrases, never mid-phrase. */
+    .summary .stats { flex-wrap: wrap; gap: 8px 18px; }
+    .summary .stats span { white-space: nowrap; }
+    /* Touch targets: the pill buttons sit ~32px tall by text metrics alone. */
+    button.spin, button.replay, .try-btn { min-height: 44px; }
+    /* Diagram and board are wider than a phone and scroll in place; without
+       a cue they read as cropped rather than swipeable. */
+    .scroll-hint {
+      display: block; font-family: var(--font-mono); font-size: 0.63rem;
+      color: var(--ink-faint); margin: 5px 0 0; letter-spacing: 0.03em;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="top">
+    <div>
+      <div class="kicker"><span class="badge">simulation</span> no real work performed</div>
+      <h1>goldthread</h1>
+      <p class="sub">A goldthread project spinning up, start to finish &mdash; illustrative, not a real deployment.</p>
+    </div>
+    <div class="controls">
+      <button class="spin" id="spinBtn" type="button">Spin up &rarr;</button>
+      <button class="replay" id="replayBtn" type="button" disabled>Replay &#8635;</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage-request">
+    <div class="stage-label">1 &middot; the request</div>
+    <div class="request-bubble">
+      <span class="from">Main Chat</span>
+      &ldquo;Build a social app for cat gossip.&rdquo;
+    </div>
+  </div>
+
+  <div class="stage" id="stage-thesis">
+    <div class="stage-label">2 &middot; the gold thesis is written</div>
+    <div class="thesis-card" id="thesisCard">
+      <span class="th-name">GOLD_THESIS.md</span>
+      <h2>Cat Gossip</h2>
+      <p class="problem"><b style="color:var(--ink)">Core Problem &mdash;</b> Cat owners have nowhere dedicated to gossip about their cats: who's beefing with the tabby next door, who got into the neighbor's koi pond again. General social apps bury pet content in a feed built for humans. Cat Gossip exists to give cat drama a home.</p>
+      <ul class="dod">
+        <li>A user can post a cat update with a photo and an optional location tag</li>
+        <li>The feed ranks by <i>gossip heat</i> (reaction velocity), not just recency</li>
+        <li>Report and block ship before any public launch</li>
+      </ul>
+      <div class="rules-row">
+        <span class="rule-chip">1&middot; cross-reference before acting</span>
+        <span class="rule-chip">2&middot; board over chat</span>
+        <span class="rule-chip">3&middot; epistemic hygiene</span>
+        <span class="rule-chip">4&middot; delegate heavy reads</span>
+        <span class="rule-chip">5&middot; return contracts are law</span>
+        <span class="rule-chip">6&middot; escalate, don't improvise</span>
+      </div>
+      <div class="seal-row">
+        <div class="seal-badge" id="sealBadge">&#128274;</div>
+        <span class="seal-text" id="sealText">awaiting chmod 444&hellip;</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage-hub">
+    <div class="stage-label">3 &middot; the PM wakes up, spokes come online</div>
+    <div class="constellation">
+      <svg class="threads" id="threads"></svg>
+      <div class="grid" id="grid">
+
+        <div class="card" data-node="mainchat">
+          <div class="role-row"><span class="role">Main Chat</span></div>
+          <p class="task">Founding request logged &middot; handed to PM</p>
+        </div>
+
+        <div class="card" data-node="infra">
+          <div class="role-row"><span class="role">Infra / DevOps</span><span class="pill cloud"><span class="dot"></span>cloud</span></div>
+          <p class="task">Provision Postgres + photo storage; estimate hosting at <b>10k</b> daily cats.</p>
+        </div>
+
+        <div class="card" data-node="research">
+          <div class="role-row"><span class="role">Research</span><span class="pill cloud"><span class="dot"></span>cloud</span></div>
+          <p class="task">Compare feed&#8209;ranking approaches: recency vs. reaction&#8209;velocity vs. hybrid.</p>
+        </div>
+
+        <div class="card" data-node="dumbq">
+          <div class="role-row"><span class="role">Dumb Question</span><span class="pill local"><span class="dot"></span>local</span></div>
+          <p class="task">Is &ldquo;Cat Gossip&rdquo; too generic to ship as the MVP name?</p>
+        </div>
+
+        <div class="card hub">
+          <div class="seal">GT</div>
+          <div class="role">PM</div>
+          <div class="sub">reading GOLD_THESIS.md</div>
+        </div>
+
+        <div class="card board-card" data-node="ghost">
+          <span class="pill" style="background:none;">board: <b style="color:var(--ink); margin-left:4px;">6</b>&nbsp;ready</span>
+        </div>
+
+        <div class="card" data-node="bakeoff">
+          <div class="role-row"><span class="role">Bake&#8209;Off</span><span class="pill cloud"><span class="dot"></span>A/B/C/D</span></div>
+          <p class="task">Implement the &ldquo;gossip heat&rdquo; ranking algorithm &mdash; 4 variants, compare scorecards.</p>
+        </div>
+
+        <div class="card" data-node="review">
+          <div class="role-row"><span class="role">Code Review</span><span class="pill cloud"><span class="dot"></span>cloud</span></div>
+          <p class="task">Review PR #12: anonymous cat&#8209;sighting report flow.</p>
+        </div>
+
+      </div>
+    </div>
+    <p class="grid-hint">tap any window to open it full-screen</p>
+  </div>
+
+  <div class="stage" id="stage-summary">
+    <div class="summary">
+      <div class="stats">
+        <span><b>6</b> tasks dispatched</span>
+        <span><b>0</b> blocked</span>
+        <span><b>0</b> done</span>
+      </div>
+      <span class="disclaimer">simulation &middot; no real agents ran</span>
+    </div>
+  </div>
+
+  <div class="stage" id="stage-amend">
+    <div class="stage-label">4 &middot; can the gold thesis change?</div>
+    <div class="amend-grid">
+
+      <div class="lane agent-lane" id="agentLane">
+        <div class="lane-head">
+          <span class="lane-title">As an agent</span>
+          <span class="chip critical">blocked</span>
+        </div>
+        <p class="lane-sub">An agent decides, on its own, to quietly soften the launch requirement.</p>
+        <button class="try-btn" id="tryAgent" type="button" disabled>Attempt edit &rarr;</button>
+        <div class="lane-stage">
+          <div class="tool-call" id="agentCall">
+            <span class="tc-label">write_file</span>
+            <code>{ file_path: "GOLD_THESIS.md", content: "&hellip;Report and block ship <s>before any public launch</s> <b>in v2</b>&hellip;" }</code>
+          </div>
+          <div class="block-result">
+            <span class="br-label">blocked</span>
+            <p>BLOCKED by goldthread: GOLD_THESIS.md is immutable to agents. Reading it is always allowed. Writing about it is allowed too: to propose a change, append rationale to memory/AMENDMENTS.md and file a kanban task tagged needs&#8209;human.</p>
+          </div>
+          <div class="escalation">
+            <div class="esc-item">
+              <span class="esc-tag">memory/AMENDMENTS.md</span>
+              <p>&ldquo;Propose relaxing the report/block deadline to v2 &mdash; ranking work is taking longer than scoped.&rdquo;</p>
+            </div>
+            <div class="esc-item">
+              <span class="esc-tag" style="color:var(--warn)">kanban &middot; needs&#8209;human</span>
+              <p>Filed. Awaiting your review &mdash; nothing changed yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lane human-lane" id="humanLane">
+        <div class="lane-head">
+          <span class="lane-title">As a human</span>
+          <span class="chip good">allowed</span>
+        </div>
+        <p class="lane-sub">You decide cat tags need owner consent, and amend it yourself.</p>
+        <button class="try-btn" id="tryHuman" type="button" disabled>Amend it &rarr;</button>
+        <div class="lane-stage">
+          <div class="term-line t1">$ chmod 644 GOLD_THESIS.md</div>
+          <div class="term-line t2">$ chmod 444 GOLD_THESIS.md</div>
+          <div class="term-line t3">$ git commit -m &quot;thesis: require consent before cat tagging&quot;</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<dialog id="pmDialog" class="win">
+ <div class="win-inner">
+  <div class="win-head">
+    <div>
+      <div class="win-kicker">kanban.db &middot; board &ldquo;cat-gossip&rdquo; &middot; 20 min in</div>
+      <h2>PM window</h2>
+    </div>
+    <button class="win-close" data-close="pmDialog" type="button" aria-label="Close window" autofocus>&times;</button>
+  </div>
+  <div class="win-body"><div class="win-content">
+
+    <div class="pm-section-label">The build</div>
+    <div class="build-wrap">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Cat Gossip architecture: clients to API, fanning out to feed ranking, photo storage and moderation, all backed by Postgres.">
+        <defs>
+          <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill="var(--ink-faint)"/>
+          </marker>
+        </defs>
+        <g stroke="var(--ink-faint)" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+          <path d="M360,58 L360,84"/>
+          <path d="M300,136 L150,176"/>
+          <path d="M360,136 L360,176"/>
+          <path d="M420,136 L570,176"/>
+          <path d="M135,240 L330,262"/>
+          <path d="M360,240 L360,262"/>
+          <path d="M585,240 L390,262"/>
+        </g>
+        <g font-family="var(--font-body)" text-anchor="middle">
+          <rect x="280" y="14" width="160" height="44" rx="8" fill="var(--surface-2)" stroke="var(--hairline)"/>
+          <text x="360" y="34" font-size="13" font-weight="600" fill="var(--ink)">Clients</text>
+          <text x="360" y="49" font-size="10" fill="var(--ink-muted)">iOS &middot; web</text>
+
+          <rect x="260" y="88" width="200" height="48" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+          <text x="360" y="109" font-size="13" font-weight="600" fill="var(--ink)">Cat Gossip API</text>
+          <text x="360" y="125" font-size="10" fill="var(--ink-muted)">posts &middot; reactions &middot; follows</text>
+
+          <rect x="40" y="178" width="190" height="62" rx="8" fill="var(--surface-2)" stroke="var(--hairline)"/>
+          <text x="135" y="199" font-size="12.5" font-weight="600" fill="var(--ink)">Feed ranking</text>
+          <text x="135" y="214" font-size="10" fill="var(--ink-muted)">&ldquo;gossip heat&rdquo;</text>
+          <text x="135" y="230" font-size="9.5" font-family="var(--font-mono)" fill="var(--gold-ink)">gt-bakeoff</text>
+
+          <rect x="265" y="178" width="190" height="62" rx="8" fill="var(--surface-2)" stroke="var(--hairline)"/>
+          <text x="360" y="199" font-size="12.5" font-weight="600" fill="var(--ink)">Photo storage</text>
+          <text x="360" y="214" font-size="10" fill="var(--ink-muted)">object store &middot; CDN</text>
+          <text x="360" y="230" font-size="9.5" font-family="var(--font-mono)" fill="var(--gold-ink)">gt-infra</text>
+
+          <rect x="490" y="178" width="190" height="62" rx="8" fill="var(--surface-2)" stroke="var(--hairline)"/>
+          <text x="585" y="199" font-size="12.5" font-weight="600" fill="var(--ink)">Moderation</text>
+          <text x="585" y="214" font-size="10" fill="var(--ink-muted)">report &middot; block</text>
+          <text x="585" y="230" font-size="9.5" font-family="var(--font-mono)" fill="var(--gold-ink)">gt-review</text>
+
+          <rect x="265" y="264" width="190" height="34" rx="8" fill="var(--surface)" stroke="var(--hairline)"/>
+          <text x="360" y="286" font-size="12" font-weight="600" fill="var(--ink)">Postgres</text>
+        </g>
+      </svg>
+    </div>
+    <p class="scroll-hint">swipe the diagram &rarr;</p>
+    <p class="build-note">Every box traces to a Definition&#8209;of&#8209;Done line in the thesis. Moderation is there because the thesis says report and block ship before any public launch &mdash; which is exactly what the agent tried to relax.</p>
+
+    <div class="pm-section-label" style="margin-top:6px">Board</div>
+    <div class="board-scroll">
+      <div class="board">
+
+        <div class="col">
+          <div class="col-head"><span>Backlog</span><span class="n">1</span></div>
+          <div class="ticket">
+            <p>Name check &mdash; is &ldquo;Cat Gossip&rdquo; too generic for the MVP?</p>
+            <span class="who">gt-dumbq</span>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="col-head"><span>Ready</span><span class="n">2</span></div>
+          <div class="ticket">
+            <p>Compare feed&#8209;ranking approaches: recency vs. reaction&#8209;velocity vs. hybrid</p>
+            <span class="who">gt-research</span>
+          </div>
+          <div class="ticket">
+            <p>Review PR #12 &mdash; anonymous cat&#8209;sighting report flow</p>
+            <span class="who">gt-review</span>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="col-head"><span>In progress</span><span class="n">2</span></div>
+          <div class="ticket wip">
+            <p>Provision Postgres + photo storage</p>
+            <span class="who">gt-infra</span>
+          </div>
+          <div class="ticket wip">
+            <p>Implement &ldquo;gossip heat&rdquo; ranking &mdash; 4 variants, compare scorecards</p>
+            <span class="who">gt-bakeoff &middot; A/B/C/D</span>
+          </div>
+        </div>
+
+        <div class="col is-blocked">
+          <div class="col-head"><span>Blocked</span><span class="n">1</span></div>
+          <div class="ticket blocked">
+            <p>Relax report/block deadline to v2</p>
+            <span class="who">needs&#8209;human &middot; thesis amendment</span>
+          </div>
+        </div>
+
+        <div class="col is-done">
+          <div class="col-head"><span>Done</span><span class="n">1</span></div>
+          <div class="ticket done">
+            <p>Log founding request &amp; hand to PM</p>
+            <span class="who">main chat</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <p class="scroll-hint">swipe the board &rarr;</p>
+  </div></div>
+ </div>
+</dialog>
+
+<dialog id="spokeDialog" class="win">
+ <div class="win-inner">
+  <div class="win-head">
+    <div>
+      <div class="win-kicker" id="spokeKicker"></div>
+      <h2 id="spokeTitle"></h2>
+    </div>
+    <button class="win-close" data-close="spokeDialog" type="button" aria-label="Close window" autofocus>&times;</button>
+  </div>
+  <div class="win-body"><div class="win-content" id="spokeBody"></div></div>
+ </div>
+</dialog>
+
+<script>
+(function () {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var stages = ['stage-request', 'stage-thesis', 'stage-hub', 'stage-summary', 'stage-amend'];
+  var spinBtn = document.getElementById('spinBtn');
+  var replayBtn = document.getElementById('replayBtn');
+  var thesisCard = document.getElementById('thesisCard');
+  var sealBadge = document.getElementById('sealBadge');
+  var sealText = document.getElementById('sealText');
+  var sealRow = thesisCard.querySelector('.seal-row');
+  var dodList = thesisCard.querySelector('.dod');
+  var svg = document.getElementById('threads');
+  var grid = document.getElementById('grid');
+  var tryAgentBtn = document.getElementById('tryAgent');
+  var tryHumanBtn = document.getElementById('tryHuman');
+  var agentLane = document.getElementById('agentLane');
+  var humanLane = document.getElementById('humanLane');
+  var agentCall = document.getElementById('agentCall');
+  var pmDialog = document.getElementById('pmDialog');
+  var spokeDialog = document.getElementById('spokeDialog');
+
+  // What each window actually contains when you open it. Keyed by the card's
+  // data-node; the PM hub and the board card both open the PM window instead.
+  var SPOKES = {
+    mainchat: {
+      kicker: 'session \u00b7 main chat',
+      title: 'Main Chat',
+      html: '<h3>The founding request</h3>'
+        + '<div class="win-mono">"Build a social app for cat gossip."</div>'
+        + '<p>Turned into a gold thesis, then six kanban tasks. Nothing else lives in this window \u2014 by Core Rule 2, work over two minutes becomes a task on the board, not a conversation here.</p>'
+        + '<h3>What it dispatched</h3>'
+        + '<ul><li>Provision Postgres + photo storage \u2192 gt-infra</li>'
+        + '<li>Compare feed-ranking approaches \u2192 gt-research</li>'
+        + '<li>Gossip-heat ranking, 4 variants \u2192 gt-bakeoff</li>'
+        + '<li>Review PR #12 \u2192 gt-review</li>'
+        + '<li>Name check \u2192 gt-dumbq</li></ul>'
+    },
+    infra: {
+      kicker: 'profile gt-infra \u00b7 cloud',
+      title: 'Infra / DevOps',
+      html: '<h3>Task</h3><p>Provision Postgres and photo storage; estimate hosting at 10k daily cats.</p>'
+        + '<h3>Plan</h3>'
+        + '<ul><li>Postgres 16, single primary + read replica once the feed query lands</li>'
+        + '<li>Object store for photos, CDN in front \u2014 cat photos are the whole payload</li>'
+        + '<li>Thumbnail on upload, not on read: the feed is read-heavy by roughly 40:1</li></ul>'
+        + '<h3>Estimate at 10k daily cats</h3>'
+        + '<div class="win-mono">db          ~$45/mo\nobject+CDN  ~$28/mo  (~1.2 TB egress)\napp         ~$25/mo\n            \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntotal       ~$98/mo</div>'
+        + '<p>Returned to the board as a single conclusion. The sizing spreadsheet stayed in this window \u2014 Core Rule 4.</p>'
+    },
+    research: {
+      kicker: 'profile gt-research \u00b7 cloud',
+      title: 'Research',
+      html: '<h3>Task</h3><p>Compare feed-ranking approaches: recency vs. reaction-velocity vs. hybrid.</p>'
+        + '<h3>Findings</h3>'
+        + '<p><span class="lbl fact">FACT</span> Pure recency collapses on a small user base: with few posts an hour, the feed shows the same cats to everyone. Verifiable against the seed dataset.</p>'
+        + '<p><span class="lbl fact">FACT</span> Reaction-velocity ranking needs a time-decay term or old viral posts pin to the top indefinitely.</p>'
+        + '<p><span class="lbl belief">BELIEF</span> A hybrid \u2014 velocity scored inside a 48h recency window \u2014 fits "gossip heat" best. Revisit once real engagement data exists; I would change my mind if median posts/day/user lands under one.</p>'
+        + '<p><span class="lbl intent">INTENT</span> Hand the hybrid spec to gt-bakeoff as the shared eval criteria for its four variants.</p>'
+        + '<p>Labels are Core Rule 3 \u2014 claims are marked FACT, BELIEF, or INTENT so nothing gets promoted to settled truth without evidence.</p>'
+    },
+    dumbq: {
+      kicker: 'profile gt-dumbq \u00b7 local \u00b7 gpt-oss:20b',
+      title: 'Dumb Question',
+      html: '<h3>Question</h3><p>Is "Cat Gossip" too generic to ship as the MVP name?</p>'
+        + '<h3>Answer</h3>'
+        + '<p>Yes for a trademark, no for an MVP. It is descriptive enough that nobody has to explain the product, and renaming later costs almost nothing before launch. Ship it and revisit at the point you need a mark you can defend.</p>'
+        + '<div class="win-mono">wall clock  6.1s\ntokens      412\nmodel       gpt-oss:20b (local)</div>'
+        + '<p>This window is disposable on purpose \u2014 that is what makes it cheap to ask.</p>'
+    },
+    bakeoff: {
+      kicker: 'profile gt-bakeoff \u00b7 cloud \u00b7 A / B / C / D',
+      title: 'Bake-Off',
+      html: '<h3>Task</h3><p>Implement the "gossip heat" ranking \u2014 four variants against one shared set of eval criteria, then compare scorecards honestly.</p>'
+        + '<div class="score-wrap"><table class="score"><thead><tr>'
+        + '<th>Variant</th><th>Approach</th><th>Relevance</th><th>Cost/query</th><th>Verdict</th></tr></thead><tbody>'
+        + '<tr><td>A</td><td>pure recency</td><td>0.41</td><td>0.4 ms</td><td>too flat</td></tr>'
+        + '<tr><td>B</td><td>raw velocity</td><td>0.68</td><td>1.1 ms</td><td>stale virals pin</td></tr>'
+        + '<tr><td>C</td><td>velocity + 48h decay</td><td class="best">0.83</td><td>1.3 ms</td><td class="best">ship this</td></tr>'
+        + '<tr><td>D</td><td>learned ranker</td><td>0.86</td><td>31 ms</td><td>not worth it yet</td></tr>'
+        + '</tbody></table></div>'
+        + '<p>D scores highest and still loses: 24x the cost for three points of relevance, on a product with no engagement data to train on. C ships.</p>'
+    },
+    review: {
+      kicker: 'profile gt-review \u00b7 cloud',
+      title: 'Code Review',
+      html: '<h3>Task</h3><p>Review PR #12 \u2014 anonymous cat-sighting report flow.</p>'
+        + '<h3>Findings</h3>'
+        + '<ul><li><b>Blocking</b> \u2014 the report endpoint stores the reporter\u2019s user id alongside an "anonymous" flag. Anonymous to the UI is not anonymous in the table; a leak or a subpoena de-anonymises every reporter.</li>'
+        + '<li><b>Blocking</b> \u2014 no rate limit: one account can bury a cat under mass reports.</li>'
+        + '<li>Nit \u2014 the 500 on duplicate report should be a 409.</li></ul>'
+        + '<h3>Note</h3>'
+        + '<p>This flow is Definition-of-Done line 3 (report and block ship before any public launch), which is exactly the requirement an agent tried to push to v2. Blocking findings stand.</p>'
+    }
+  };
+  var LOCK_CLOSED = '\u{1F512}', LOCK_OPEN = '\u{1F513}';
+  var timers = [];
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+
+  function drawThreads() {
+    var hub = grid.querySelector('.card.hub');
+    var spokes = grid.querySelectorAll('[data-node]');
+    var gridRect = grid.getBoundingClientRect();
+    svg.setAttribute('width', gridRect.width);
+    svg.setAttribute('height', gridRect.height);
+    svg.innerHTML = '';
+    var hubRect = hub.getBoundingClientRect();
+    var hx = hubRect.left + hubRect.width / 2 - gridRect.left;
+    var hy = hubRect.top + hubRect.height / 2 - gridRect.top;
+    spokes.forEach(function (node) {
+      var r = node.getBoundingClientRect();
+      if (!r.width || !r.height) return;   // hidden (display:none) — no thread
+      var sx = r.left + r.width / 2 - gridRect.left;
+      var sy = r.top + r.height / 2 - gridRect.top;
+      var mx = (hx + sx) / 2, my = (hy + sy) / 2 - 12;
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M ' + hx + ' ' + hy + ' Q ' + mx + ' ' + my + ' ' + sx + ' ' + sy);
+      svg.appendChild(path);
+    });
+  }
+
+  function reset() {
+    clearTimers();
+    stages.forEach(function (id) { document.getElementById(id).classList.remove('on'); });
+    thesisCard.classList.remove('sealed');
+    sealBadge.textContent = LOCK_CLOSED;
+    sealText.textContent = 'awaiting chmod 444…';
+    svg.innerHTML = '';
+
+    // stage-4 lanes: undo anything a previous playthrough left behind —
+    // the DoD line the human lane adds, its caption, and both lanes'
+    // "already tried" button state — so a full Replay is actually a
+    // full replay, not a replay with a stale amendment still applied.
+    agentLane.classList.remove('playing');
+    humanLane.classList.remove('playing');
+    agentCall.classList.remove('shake');
+    tryAgentBtn.disabled = true;
+    tryHumanBtn.disabled = true;
+    // Same rule as the other deferred controls: the cards are invisible until
+    // stage 3, so they must not be Tab-reachable (or clickable) before then.
+    setCardsInteractive(false);
+    if (pmDialog.open) pmDialog.close();
+    if (spokeDialog.open) spokeDialog.close();
+    tryAgentBtn.textContent = 'Attempt edit →';
+    tryHumanBtn.textContent = 'Amend it →';
+    var added = dodList.querySelector('.dod-added');
+    if (added) added.remove();
+    var note = sealRow.querySelector('.amend-note');
+    if (note) note.remove();
+  }
+
+  function play() {
+    reset();
+    spinBtn.setAttribute('disabled', 'true');
+    replayBtn.setAttribute('disabled', 'true');
+    var schedule = reduced
+      ? [ ['stage-request', 0], ['stage-thesis', 0], ['seal', 0], ['stage-hub', 0], ['stage-summary', 0], ['stage-amend', 0] ]
+      : [ ['stage-request', 0], ['stage-thesis', 700], ['seal', 1900], ['stage-hub', 2500], ['stage-summary', 3300], ['stage-amend', 3900] ];
+
+    schedule.forEach(function (step) {
+      timers.push(setTimeout(function () {
+        if (step[0] === 'seal') {
+          thesisCard.classList.add('sealed');
+          sealText.textContent = 'sealed — chmod 444';
+        } else {
+          document.getElementById(step[0]).classList.add('on');
+        }
+      }, step[1]));
+    });
+
+    // Cards animate in with staggered transition-delays up to 640ms (last
+    // card) plus a 420ms transition itself — draw the thread lines only
+    // once every card has settled into its FINAL position, not mid-
+    // transition. Drawing them immediately (e.g. via requestAnimationFrame
+    // right as the stage turns on) would read each card's transiently
+    // scaled/translated rect and leave the lines pointing at where cards
+    // started, not where they land.
+    var hubTime = reduced ? 0 : 2500;
+    var settleBuffer = reduced ? 0 : 1100;
+    timers.push(setTimeout(drawThreads, hubTime + settleBuffer));
+
+    // Windows only become openable once they are actually on screen.
+    timers.push(setTimeout(function () { setCardsInteractive(true); },
+      reduced ? 0 : hubTime + settleBuffer));
+
+    var amendTime = reduced ? 0 : 3900;
+    timers.push(setTimeout(function () {
+      tryAgentBtn.disabled = false;
+      tryHumanBtn.disabled = false;
+    }, amendTime));
+
+    timers.push(setTimeout(function () {
+      spinBtn.removeAttribute('disabled');
+      replayBtn.removeAttribute('disabled');
+    }, reduced ? 0 : amendTime + 200));
+  }
+
+  function playAgent() {
+    tryAgentBtn.disabled = true;
+    tryAgentBtn.textContent = 'Blocked ✓';
+    agentLane.classList.add('playing');
+    timers.push(setTimeout(function () {
+      agentCall.classList.add('shake');
+    }, reduced ? 0 : 250));
+  }
+
+  function playHuman() {
+    tryHumanBtn.disabled = true;
+    tryHumanBtn.textContent = 'Amended ✓';
+    humanLane.classList.add('playing');
+
+    var unsealAt = reduced ? 0 : 100;
+    var editAt = reduced ? 0 : 900;
+    var resealAt = reduced ? 0 : 1500;
+
+    timers.push(setTimeout(function () {
+      thesisCard.classList.remove('sealed');
+      sealBadge.textContent = LOCK_OPEN;
+      sealText.textContent = 'chmod 644 — unlocked for edit';
+    }, unsealAt));
+
+    timers.push(setTimeout(function () {
+      var li = document.createElement('li');
+      li.className = 'dod-added';
+      li.textContent = "Cats can't be tagged in a post without their owner's consent";
+      dodList.appendChild(li);
+    }, editAt));
+
+    timers.push(setTimeout(function () {
+      thesisCard.classList.add('sealed');
+      sealBadge.textContent = LOCK_CLOSED;
+      sealText.textContent = 'sealed — chmod 444';
+      var note = document.createElement('div');
+      note.className = 'amend-note';
+      note.textContent = 'amended · thesis: require consent before cat tagging';
+      sealRow.appendChild(note);
+    }, resealAt));
+  }
+
+  function setCardsInteractive(on) {
+    grid.querySelectorAll('.card').forEach(function (c) {
+      c.tabIndex = on ? 0 : -1;
+      c.setAttribute('role', 'button');
+      c.setAttribute('aria-disabled', on ? 'false' : 'true');
+    });
+  }
+  setCardsInteractive(false);
+
+  function openCard(card) {
+    if (card.getAttribute('aria-disabled') === 'true') return;
+    var node = card.getAttribute('data-node');
+    // The hub and the board card are two views on the same thing: the PM.
+    if (card.classList.contains('hub') || node === 'ghost') { pmDialog.showModal(); return; }
+    var spec = SPOKES[node];
+    if (!spec) return;
+    document.getElementById('spokeKicker').textContent = spec.kicker;
+    document.getElementById('spokeTitle').textContent = spec.title;
+    document.getElementById('spokeBody').innerHTML = spec.html;
+    spokeDialog.showModal();
+  }
+
+  grid.addEventListener('click', function (e) {
+    var card = e.target.closest('.card');
+    if (card) openCard(card);
+  });
+  grid.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var card = e.target.closest('.card');
+    if (!card) return;
+    e.preventDefault();
+    openCard(card);
+  });
+  document.querySelectorAll('.win-close').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.getAttribute('data-close')).close();
+    });
+  });
+
+  spinBtn.addEventListener('click', play);
+  replayBtn.addEventListener('click', play);
+  tryAgentBtn.addEventListener('click', playAgent);
+  tryHumanBtn.addEventListener('click', playHuman);
+  window.addEventListener('resize', function () {
+    if (document.getElementById('stage-hub').classList.contains('on')) drawThreads();
+  });
+})();
+</script>
+</body>
+</html>

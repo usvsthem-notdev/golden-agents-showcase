@@ -1,0 +1,29 @@
+{
+  "provider": "ollama-local",
+  "ollama_url": "http://127.0.0.1:11434",
+  "hermes_bin": "hermes",
+  "num_ctx_required": 65536,
+  "results_dir": "results",
+
+  "models": [
+    {"name": "qwen3.5:4b",           "reasoning": "medium", "lanes": ["dumbq"],                  "pull_gb": 3.4},
+    {"name": "qwen3.5:9b",           "reasoning": "medium", "lanes": ["dumbq", "spoke"],         "pull_gb": 6.6},
+    {"name": "gpt-oss:20b",          "reasoning": "medium", "lanes": ["pm", "spoke", "review"],  "pull_gb": 14},
+    {"name": "mistral-small3.2:24b", "reasoning": "none",   "lanes": ["pm", "spoke"],            "pull_gb": 0}
+  ],
+
+  "_deferred_models": [
+    {"name": "qwen3.6:27b", "reasoning": "medium", "lanes": ["pm", "review", "bakeoff"], "pull_gb": 17,
+     "note": "17GB weights + 64K KV likely exceeds GPU budget on this M4 Pro; partial CPU offload expected. Held out of the active roster until there's compute headroom to run it properly - move back into `models` for a second pass, or override with --models on the CLI."}
+  ],
+
+  "reps": {"smoke": 1, "s1_guard": 5, "s2_contract": 3, "s3_thesis": 3, "s4_escalation": 3, "s5_kanban": 1, "s6_dumbq": 1},
+
+  "timeouts_s": {"smoke": 420, "s1_guard": 900, "s2_contract": 600, "s3_turn": 600, "s4_escalation": 600, "s5_kanban": 1200, "s6_dumbq": 300},
+
+  "s3": {
+    "compression_threshold_during_run": 0.12,
+    "filler_turns": 5,
+    "max_turns_wait_compaction": 8
+  }
+}

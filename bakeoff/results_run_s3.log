@@ -1,0 +1,3 @@
+PREFLIGHT OK
+[qwen3.5:4b] s3_thesis rep1: INVALID_NO_COMPACTION (154.0s)
+[qwen3.5:4b] s3_thesis rep2: INVALID_NO_COMPACTION (110.5s)

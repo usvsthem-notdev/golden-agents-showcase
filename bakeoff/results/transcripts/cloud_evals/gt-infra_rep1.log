@@ -1,0 +1,87 @@
+rc=0 timed_out=False sid=20260819_145447_f29dea wall=24.2s
+
+  ⚠ tirith security scanner enabled but not available — command scanning will use pattern matching only
+Root cause
+
+GitHub Actions deliberately withholds repository secrets from workflows triggered by pull_request when the PR originates from a fork. This is a security control: since anyone can open a PR from a fork and that PR's code/workflow changes could be attacker-controlled, GitHub refuses to expose `secrets.*` to that run (they resolve to empty strings, not an error — hence `API_KEY` being empty in deploy.sh rather than the workflow failing at the `env:` step). Pushes to main don't hit this restriction because you (a trusted collaborator) own that code and context, so secrets are always exposed there.
+
+So `${{ secrets.API_KEY }}` evaluates to `""` on the fork-PR run, gets exported as `API_KEY=""`, and deploy.sh correctly detects it's empty.
+
+Two fixes, pick based on what you actually want to happen on fork PRs
+
+1. If forked PRs should never deploy (most common — deploy on PR is usually meant for same-repo PRs or shouldn't run for external contributors at all):
+
+Gate the step so it only runs for PRs from the same repo, or better, split "test" (no secrets, safe for forks) from "deploy" (needs secrets, only trusted refs):
+
+```yaml
+name: Deploy
+on:
+  pull_request:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+        run: ./deploy.sh
+```
+
+This is the simplest correct fix if the intent was never to deploy fork PRs — it just skips the job cleanly instead of failing.
+
+2. If you genuinely need to deploy previews for fork PRs too, use the workflow_run pattern (don't switch to pull_request_target and check out the PR head directly — that runs untrusted code with your secrets and is a known supply-chain hole):
+
+```yaml
+# .github/workflows/build.yml — runs on the fork PR, untrusted, no secrets
+name: Build
+on:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+```
+
+```yaml
+# .github/workflows/deploy.yml — runs on base repo after Build completes, has secrets
+name: Deploy
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+        run: ./deploy.sh
+```
+
+Here `workflow_run` executes in the context of the base repository's default branch, so secrets are available, and it consumes only the built artifact from the untrusted run rather than executing the fork's code with elevated credentials.
+
+If you tell me which behavior you actually want (skip deploy on fork PRs vs. deploy previews for fork PRs), I can apply the exact patch to your workflow file.
+
+
+STDERR:
+[33m⚠ Deprecated .env settings detected:[0m
+  [33m⚠[0m TERMINAL_CWD=/Users/conno/Documents/golden agents/bakeoff/results/runs/gt-infra_cloudeval_r1_20260819_145447_291152/proj found in .env — this is deprecated.
+  [2mMove to config.yaml instead:  terminal:\n    cwd: /your/project/path[0m
+  [2mThen remove the old entries from ~/.hermes/profiles/gt-infra/.env[0m
+
+
+session_id: 20260819_145447_f29dea

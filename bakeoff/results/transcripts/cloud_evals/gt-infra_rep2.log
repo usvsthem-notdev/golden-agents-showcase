@@ -1,0 +1,52 @@
+rc=0 timed_out=False sid=20260819_145512_7aba59 wall=29.0s
+
+No matching files in this repo, so this is a standalone diagnostic — here's the analysis.
+
+ROOT CAUSE
+
+GitHub does not expose repository secrets to workflow runs triggered by `pull_request` events when the PR comes from a fork. This is a deliberate security control: a fork PR's workflow YAML and code are untrusted, so if secrets were injected, anyone could open a PR that echoes `$API_KEY` (or exfiltrates it over the network) and steal it.
+
+So on a fork PR:
+- `secrets.API_KEY` evaluates to an empty string (not an error — the expression just resolves empty).
+- `env: API_KEY: ${{ secrets.API_KEY }}` sets `API_KEY=""` in the job environment.
+- `deploy.sh` runs, sees `API_KEY` unset/empty, and fails with "API_KEY is empty".
+
+On a push to `main`, the workflow runs in the base repo's context (not a fork PR), so secrets are available normally — matching your observed "works fine on push" behavior.
+
+THE FIX
+
+Do not try to just "unlock" secrets for `pull_request` from forks — that would defeat the security model. Pick the approach that matches what you actually need:
+
+1. If forked PRs shouldn't deploy at all (most common — deploy only trusted/internal changes):
+   Restrict the job so it only runs for PRs from the same repo (not forks), or better, don't deploy on PR at all and instead deploy on `push` to `main`/merge:
+
+   jobs:
+     deploy:
+       if: github.event.pull_request.head.repo.full_name == github.repository
+       runs-on: ubuntu-latest
+       ...
+
+   This makes the step a no-op for fork PRs instead of failing loudly — but it also means fork contributors get no deploy/preview at all, which is usually fine for a real deploy job.
+
+2. If you need a preview/deploy step to run for fork PRs too, use the two-workflow split pattern instead of `pull_request_target`:
+   - Workflow A (`pull_request`, no secrets): builds artifacts from the untrusted PR code, uploads them via `actions/upload-artifact`. No access to secrets, safe to run on arbitrary fork code.
+   - Workflow B (`workflow_run`, triggered when Workflow A completes): runs in the base repo's context, so it has `secrets.API_KEY`. It downloads the artifact from Workflow A and runs `deploy.sh` against that artifact — it never checks out or executes the PR's raw code with secrets in scope.
+
+   This avoids the common trap of switching directly to `pull_request_target`, which does grant secrets but also checks out and can execute untrusted PR code with those secrets in scope (a classic RCE-to-secret-theft path) unless you're very careful to never check out `github.event.pull_request.head.sha` or run PR-controlled scripts under it.
+
+3. If deploy truly must run inline on `pull_request_target` (e.g. commenting a preview URL), the safe pattern is:
+   - Keep `on: pull_request_target`.
+   - Do NOT `actions/checkout` the PR head ref for anything that gets executed with secrets present — checkout the base ref, or checkout the PR ref only into a build step with an explicit `persist-credentials: false` and no secrets in that step's `env`.
+   - Isolate any step that touches secrets so it never runs code sourced from the fork.
+
+RECOMMENDATION for your snippet specifically: since this is a straight `deploy.sh` execution using `secrets.API_KEY`, the safest minimal fix is option 1 — gate the job on `github.event.pull_request.head.repo.full_name == github.repository`, and/or trigger the actual deploy on `push` to `main` instead of `pull_request`. That keeps secrets out of fork-PR runs entirely rather than trying to route them there.
+
+
+STDERR:
+[33m⚠ Deprecated .env settings detected:[0m
+  [33m⚠[0m TERMINAL_CWD=/Users/conno/Documents/golden agents/bakeoff/results/runs/gt-infra_cloudeval_r2_20260819_145511_776879/proj found in .env — this is deprecated.
+  [2mMove to config.yaml instead:  terminal:\n    cwd: /your/project/path[0m
+  [2mThen remove the old entries from ~/.hermes/profiles/gt-infra/.env[0m
+
+
+session_id: 20260819_145512_7aba59

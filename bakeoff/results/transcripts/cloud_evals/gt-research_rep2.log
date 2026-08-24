@@ -1,0 +1,25 @@
+rc=0 timed_out=False sid=20260819_145434_ae394c wall=13.1s
+
+SQLite WAL vs Rollback-Journal — single writer, multiple readers, ~50 small writes/sec
+
+FACT: In rollback-journal mode, writers take an exclusive lock that blocks all readers for the duration of the transaction. (Verifiable: SQLite docs, "File Locking And Concurrency In SQLite Version 3.")
+
+FACT: In WAL mode, writers append to a separate WAL file while readers continue reading the last-committed snapshot from the main db; readers and the single writer don't block each other. (Verifiable: SQLite docs, "Write-Ahead Logging.")
+
+FACT: WAL requires periodic checkpointing to fold the WAL back into the main database file, and unbounded reader hold times can prevent checkpoints from completing, letting the WAL file grow. (Verifiable: same WAL doc, "Checkpointing.")
+
+BELIEF: At 50 small writes/sec, WAL's per-transaction fsync/write overhead is low enough that checkpoint growth won't be a practical problem, since each write is small and default auto-checkpoint (1000 pages) triggers well before file bloat is significant. (Would change my mind: if writes are wrapped in long-running transactions, or reader transactions routinely stay open for minutes, causing checkpoint starvation — I'd want to check actual WAL file size in production rather than assume.)
+
+BELIEF: WAL is the better default for this workload specifically because readers must never block on the writer — that's WAL's core advantage over rollback-journal, and the write rate here is modest enough that WAL's extra fsync (in synchronous=NORMAL) isn't a bottleneck. (Would change my mind: if the app needs durability guarantees stronger than WAL's NORMAL mode gives on power loss, or runs on a filesystem without proper mmap/shared-memory support, e.g. some network filesystems, where WAL is unreliable.)
+
+INTENT: Recommend WAL mode with `PRAGMA journal_mode=WAL` and `PRAGMA synchronous=NORMAL`, and suggest monitoring WAL file size / checkpoint frequency in production before finalizing.
+
+
+STDERR:
+[33m⚠ Deprecated .env settings detected:[0m
+  [33m⚠[0m TERMINAL_CWD=/Users/conno/Documents/golden agents/bakeoff/results/runs/gt-research_cloudeval_r2_20260819_145433_971838/proj found in .env — this is deprecated.
+  [2mMove to config.yaml instead:  terminal:\n    cwd: /your/project/path[0m
+  [2mThen remove the old entries from ~/.hermes/profiles/gt-research/.env[0m
+
+
+session_id: 20260819_145434_ae394c

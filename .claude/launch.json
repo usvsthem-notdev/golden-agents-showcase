@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demos",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8099",
+        "--directory",
+        "demos"
+      ],
+      "port": 8099
+    },
+    {
+      "name": "console",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "console/server.py",
+        "--port",
+        "9120"
+      ],
+      "port": 9120
+    }
+  ]
+}

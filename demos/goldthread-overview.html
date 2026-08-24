@@ -1,0 +1,710 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>goldthread</title>
+<style>
+  :root {
+    --paper: #E7E4D5;
+    --panel: #F1EFE3;
+    --panel-line: #DEDAC8;
+    --ink: #201F17;
+    --ink-dim: #5B5849;
+    --gold: #9C6C28;
+    --gold-strong: #7E5620;
+    --thread: #B98330;
+    --pass: #2C6357;
+    --pass-bg: #DCE6DE;
+    --fail: #9A3A28;
+    --fail-bg: #EDD9CC;
+    --rule: rgba(32,31,23,0.15);
+    --stamp-bg: #FBF9F0;
+    --shadow: rgba(32,31,23,0.10);
+
+    --font-display: 'Iowan Old Style','Palatino Linotype', Palatino, 'URW Palladio L', Georgia, serif;
+    --font-body: 'Iowan Old Style','Palatino Linotype', Palatino, Georgia, serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Berkeley Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15140F;
+      --panel: #1C1A13;
+      --panel-line: #322E22;
+      --ink: #ECE6D4;
+      --ink-dim: #A79E88;
+      --gold: #D9A94D;
+      --gold-strong: #EFC272;
+      --thread: #DBA34F;
+      --pass: #5CB49E;
+      --pass-bg: #1E332C;
+      --fail: #E17E63;
+      --fail-bg: #3A241D;
+      --rule: rgba(236,230,212,0.16);
+      --stamp-bg: #1A1810;
+      --shadow: rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15140F;
+    --panel: #1C1A13;
+    --panel-line: #322E22;
+    --ink: #ECE6D4;
+    --ink-dim: #A79E88;
+    --gold: #D9A94D;
+    --gold-strong: #EFC272;
+    --thread: #DBA34F;
+    --pass: #5CB49E;
+    --pass-bg: #1E332C;
+    --fail: #E17E63;
+    --fail-bg: #3A241D;
+    --rule: rgba(236,230,212,0.16);
+    --stamp-bg: #1A1810;
+    --shadow: rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1.03rem;
+    line-height: 1.62;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--gold-strong); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px 120px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding: 76px 0 56px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .eyebrow-top {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold-strong);
+    margin: 0 0 22px;
+  }
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(3.1rem, 9vw, 5.6rem);
+    line-height: 0.96;
+    letter-spacing: -0.01em;
+    margin: 0 0 22px;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .wordmark em { font-style: normal; color: var(--gold); }
+  .lede {
+    font-size: clamp(1.08rem, 2vw, 1.28rem);
+    line-height: 1.55;
+    max-width: 640px;
+    color: var(--ink-dim);
+    margin: 0 0 30px;
+    text-wrap: balance;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .meta-strip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-dim);
+    border: 1px solid var(--panel-line);
+    background: var(--panel);
+    padding: 9px 14px;
+    border-radius: 3px;
+  }
+  .meta-strip b { color: var(--gold-strong); font-weight: 600; }
+
+  .thread-svg { position: absolute; right: 0; top: 40px; width: 120px; height: 260px; opacity: 0.55; }
+  @media (max-width: 720px) { .thread-svg { display: none; } }
+
+  /* ---------- ledger spine ---------- */
+  .ledger { position: relative; padding-left: 40px; margin-top: 8px; }
+  .ledger::before {
+    content: '';
+    position: absolute;
+    left: 6px; top: 6px; bottom: 6px;
+    width: 1px;
+    background: repeating-linear-gradient(to bottom, var(--thread) 0 7px, transparent 7px 13px);
+  }
+  @media (max-width: 640px) { .ledger { padding-left: 24px; } .ledger::before { left: 2px; } }
+
+  .entry { padding: 72px 0 8px; border-bottom: 1px solid var(--rule); }
+  .entry:last-of-type { border-bottom: none; }
+  .entry-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-strong);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .entry-eyebrow::before {
+    content: '';
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--thread);
+    margin-left: -46px;
+    flex: 0 0 auto;
+  }
+  @media (max-width: 640px) { .entry-eyebrow::before { margin-left: -30px; } }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.55rem, 3.4vw, 2.05rem);
+    line-height: 1.18;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin: 34px 0 12px;
+  }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  .prose p:last-child { margin-bottom: 0; }
+
+  blockquote {
+    margin: 26px 0;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+    font-style: italic;
+    font-size: 1.12rem;
+    line-height: 1.55;
+    max-width: 62ch;
+    color: var(--ink);
+  }
+
+  /* ---------- evidence stamps ---------- */
+  .stamp {
+    position: relative;
+    background: var(--stamp-bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 4px;
+    padding: 20px 22px 20px 22px;
+    margin: 22px 0;
+    box-shadow: 0 1px 0 var(--shadow);
+    max-width: 640px;
+  }
+  .stamp-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .stamp-head .verdict { color: var(--pass); font-weight: 700; }
+  .stamp-head .verdict.fail { color: var(--fail); }
+  .stamp p { font-size: 0.97rem; margin: 0; max-width: none; }
+  .stamp p + p { margin-top: 10px; }
+
+  /* ---------- panel row (console tour) ---------- */
+  .panel-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 26px 0 6px; }
+  @media (max-width: 780px) { .panel-row { grid-template-columns: 1fr; } }
+
+  /* ---------- console chrome (real UI, recreated from a live capture) --- */
+  .console-chrome { border: 1px solid var(--panel-line); border-radius: 6px; overflow: hidden;
+    margin: 30px 0; background: var(--panel); }
+  .cc-head { padding: 10px 16px; border-bottom: 1px solid var(--panel-line);
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 8px; color: var(--ink-dim); background: var(--stamp-bg); }
+  .cc-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pass); flex: 0 0 auto; }
+  .cc-body { padding: 20px 18px 18px; }
+  .cc-caption { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-dim);
+    padding: 9px 16px; border-top: 1px solid var(--panel-line); background: var(--stamp-bg); }
+
+  .spoke-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+  @media (max-width: 640px) { .spoke-grid { grid-template-columns: 1fr 1fr; } }
+  .spoke-card { background: var(--stamp-bg); border: 1px solid var(--panel-line); border-radius: 5px;
+    padding: 11px 12px; }
+  .spoke-card.hub { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; border: 1.5px dashed var(--thread); background: var(--panel); }
+  .spoke-name { font-family: var(--font-display); font-weight: 600; font-size: 0.86rem; margin: 0 0 5px; }
+  .spoke-badge { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono);
+    font-size: 0.6rem; color: var(--pass); margin-bottom: 4px; }
+  .spoke-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pass); }
+  .spoke-model { font-family: var(--font-mono); font-size: 0.6rem; color: var(--ink-dim);
+    display: block; margin-bottom: 6px; }
+  .spoke-count { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600; color: var(--ink); }
+
+  .kanban-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+  @media (max-width: 640px) { .kanban-strip { grid-template-columns: 1fr; } }
+  .kcol { background: var(--stamp-bg); border: 1px solid var(--panel-line); border-radius: 5px;
+    padding: 9px 10px; min-height: 56px; }
+  .kcol-head { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--ink-dim); margin: 0 0 8px; display: flex;
+    justify-content: space-between; }
+  .kcard { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 3px;
+    padding: 7px 9px; font-size: 0.76rem; margin-bottom: 7px; line-height: 1.35; }
+  .kcard:last-child { margin-bottom: 0; }
+  .kcard .kid { font-family: var(--font-mono); font-size: 0.58rem; color: var(--gold-strong);
+    display: block; margin-bottom: 3px; }
+  .kcard .kmeta { font-family: var(--font-mono); font-size: 0.6rem; color: var(--ink-dim);
+    display: block; margin-top: 4px; }
+  .kcol-empty { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-dim); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 5px;
+    padding: 18px 18px 20px;
+  }
+  .panel-tag {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold-strong);
+    margin: 0 0 8px;
+  }
+  .panel h4 { font-family: var(--font-display); font-size: 1.06rem; margin: 0 0 8px; font-weight: 600; }
+  .panel p { font-size: 0.92rem; margin: 0; color: var(--ink-dim); max-width: none; }
+  .mini-board { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+  .mini-card { font-family: var(--font-mono); font-size: 0.7rem; background: var(--stamp-bg); border: 1px solid var(--panel-line); border-radius: 3px; padding: 6px 8px; color: var(--ink-dim); }
+  .mini-card b { color: var(--ink); }
+  .route-chip { display: inline-flex; gap: 6px; align-items: center; font-family: var(--font-mono); font-size: 0.68rem; margin: 3px 4px 3px 0; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--panel-line); color: var(--ink-dim); }
+  .route-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-fable { background: var(--gold); }
+  .dot-sonnet { background: var(--pass); }
+  .dot-haiku { background: var(--ink-dim); }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .badge { font-family: var(--font-mono); font-size: 0.68rem; padding: 3px 8px; border-radius: 3px; background: var(--pass-bg); color: var(--pass); border: 1px solid var(--panel-line); }
+
+  /* ---------- rule list ---------- */
+  .rule-list { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 8px; max-width: 640px; }
+  .rule-list li {
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-left: 3px solid var(--thread);
+    border-radius: 2px;
+  }
+  .rule-list b { font-family: var(--font-mono); color: var(--gold-strong); margin-right: 8px; }
+
+  /* ---------- build log ---------- */
+  .build-log { display: grid; gap: 26px; margin: 22px 0 4px; }
+  .build-day { break-inside: avoid; }
+  .build-day-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 0 0 9px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .build-day-label b { color: var(--gold-strong); font-weight: 600; letter-spacing: normal; text-transform: none; font-size: 0.8rem; }
+  .build-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+  .build-list li {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    padding: 7px 12px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+  }
+  .build-list .n {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--gold-strong);
+    flex: 0 0 auto;
+    min-width: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- tables ---------- */
+  .table-scroll { overflow-x: auto; margin: 18px 0; border: 1px solid var(--panel-line); border-radius: 5px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.88rem; background: var(--panel); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--panel-line); vertical-align: top; }
+  th { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); font-weight: 600; background: var(--stamp-bg); }
+  tr:last-child td { border-bottom: none; }
+  td.diff { font-family: var(--font-mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+  .tier { font-family: var(--font-mono); font-size: 0.72rem; padding: 2px 7px; border-radius: 3px; }
+  .tier-high { background: var(--fail-bg); color: var(--fail); }
+  .tier-medium { background: var(--panel-line); color: var(--ink-dim); }
+  .tier-low { background: var(--pass-bg); color: var(--pass); }
+
+  /* ---------- the catch (climax) ---------- */
+  .catch {
+    margin: 28px 0;
+    background: var(--fail-bg);
+    border: 1px solid var(--fail);
+    border-radius: 6px;
+    padding: 26px 26px 24px;
+  }
+  .catch-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .catch-verdict {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: var(--fail);
+    border: 1.5px solid var(--fail);
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+  .catch-title { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0; color: var(--ink); }
+  .catch p { font-size: 0.98rem; }
+  .catch-code { font-family: var(--font-mono); font-size: 0.82rem; background: var(--paper); border: 1px solid var(--panel-line); padding: 10px 12px; border-radius: 4px; display: block; margin: 12px 0; color: var(--fail); }
+
+  /* ---------- close ---------- */
+  .close-block { padding: 78px 0 20px; }
+  .manifesto {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(1.25rem, 2.6vw, 1.6rem);
+    line-height: 1.5;
+    max-width: 620px;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0 0 40px;
+  }
+  .footer-meta {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-dim);
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .footer-meta a { color: var(--ink-dim); text-decoration: underline; text-underline-offset: 3px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ledger::before { animation: draw 1.4s ease-out; transform-origin: top; }
+    @keyframes draw { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0% 0); } }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <svg class="thread-svg" viewBox="0 0 120 260" aria-hidden="true">
+      <path d="M20 0 C 60 40, 0 80, 40 120 S 100 200, 60 260" fill="none" stroke="var(--thread)" stroke-width="1.4" stroke-dasharray="1 7" stroke-linecap="round"/>
+    </svg>
+    <p class="eyebrow-top">Governance layer for autonomous engineering work</p>
+    <h1 class="wordmark">gold<em>thread</em></h1>
+    <p class="lede">Most review checks the last diff. <strong>goldthread checks the thesis</strong> &mdash; the whole merged codebase against every rule, every time. On 24 Aug 2026, on a beer-rating app, that check caught a real safety gap that two separately passing reviews had already missed.</p>
+    <div class="meta-strip">CASE STUDY &mdash; POURRATE &nbsp;&middot;&nbsp; <b>6</b> thesis rules &nbsp;&middot;&nbsp; <b>3</b> models routed &nbsp;&middot;&nbsp; <b>$3.90</b> spent &nbsp;&middot;&nbsp; <b>1</b> gap caught pre-release &nbsp;&middot;&nbsp; <b>34</b> steps, 6 days, no reordering</div>
+  </header>
+
+  <div class="ledger">
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 00 &mdash; the failure mode</p>
+      <h2>Passing every review, still shipping broken</h2>
+      <div class="prose">
+        <p>Decompose a build into independent subtasks and each one gets reviewed on its own diff &mdash; and each one can legitimately pass. A rule like <em>"report and block ships alongside posting"</em> isn't violated by either piece alone, only by the two together, or apart. Per-diff review has no way to see that combination. Neither does a chat window that forgot the constraint three context resets ago.</p>
+      </div>
+      <blockquote>goldthread doesn't trust the last diff. It re-reads the thesis into every call an agent makes, and it re-checks the whole merged codebase against it before anything ships &mdash; not because that's thorough, but because per-diff review provably isn't.</blockquote>
+    </section>
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 01 &mdash; the thesis</p>
+      <h2>One sealed file, injected everywhere</h2>
+      <div class="prose">
+        <p><code>GOLD_THESIS.md</code> is written once, by a human, before any agent touches the project. It's sealed &mdash; file mode 444 &mdash; and re-injected into every model call any agent makes for the life of the project. Not a style guide a model happens to remember; a file nothing downstream gets to quietly forget.</p>
+        <p>That sounds simple until you actually try to make it hold. Two real incidents, found by attacking and auditing goldthread's own enforcement, not by reading its source and assuming it worked:</p>
+      </div>
+
+      <div class="stamp">
+        <div class="stamp-head"><span>Guard hardening &middot; 2026-08-20</span><span class="verdict">verified &middot; 74/74</span></div>
+        <p>The first guard blocked writes by matching <code>GOLD_THESIS.md</code> as a literal, case-sensitive substring of the shell command. Six real bypasses got through before it was rewritten: <code>rm -f</code> deleted a sealed thesis outright &mdash; mode 444 stops redirects, not <code>rm</code>, because it protects the file's contents, not its directory entry &mdash; <code>sed -i</code> rewrote one in place, <code>chmod 644</code> unsealed one, and three more slipped past as a glob, a case variant, and a quote-split filename.</p>
+        <p>Fixed by resolving real paths instead of matching strings. Verified live: an agent instructed to <code>rm -f GOLD_THESIS.md</code> in a covered profile made zero tool calls, and the thesis survived.</p>
+      </div>
+
+      <div class="stamp">
+        <div class="stamp-head"><span>Coverage gap &middot; 2026-08-22</span><span class="verdict">verified &middot; 6/6 profiles</span></div>
+        <p>A harder bug, found by asking a different question: is the guard logic correct, or is it actually <em>running where the work happens</em>? It turned out to be mounted only in the PM profile &mdash; every profile that actually executes tasks had no guard at all, silently, since install.</p>
+        <p>"The guard is correct" and "the guard is running where it matters" are different claims, and only the second one protects anything. Installed and reverified across all six.</p>
+      </div>
+    </section>
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 02 &mdash; the console</p>
+      <h2>Plan, build, and review &mdash; all reading the same thesis</h2>
+      <p>Three tools, one shared context. The PM board holds durable state so work can span days without one context window growing until it degrades. The router plans and delegates by cost. Review runs twice &mdash; once per task, once per release.</p>
+
+      <div class="panel-row">
+        <div class="panel">
+          <p class="panel-tag">PM board</p>
+          <h4>Durable, not a chat window</h4>
+          <div class="mini-board">
+            <div class="mini-card">t_0c614680 &nbsp;<b>age gate</b> &middot; done &middot; reviewed &#10003;</div>
+            <div class="mini-card">t_92411ff6 &nbsp;<b>report / block</b> &middot; backlog</div>
+            <div class="mini-card">t_fd236d33 &nbsp;<b>drinking notice</b> &middot; backlog</div>
+          </div>
+          <p>Work spins off into fresh context rather than growing one window indefinitely &mdash; the fix for long-session memory degradation.</p>
+        </div>
+        <div class="panel">
+          <p class="panel-tag">Model router</p>
+          <h4>A strong model plans, cheap models build</h4>
+          <p style="margin-bottom:10px">Fable decomposes the goal against the injected thesis, then routes each piece by difficulty:</p>
+          <span class="route-chip"><span class="dot dot-fable"></span>high &rarr; fable</span>
+          <span class="route-chip"><span class="dot dot-sonnet"></span>medium &rarr; sonnet</span>
+          <span class="route-chip"><span class="dot dot-haiku"></span>low &rarr; haiku</span>
+        </div>
+        <div class="panel">
+          <p class="panel-tag">Review, twice</p>
+          <h4>Per task, and per release</h4>
+          <p>Per-task review scores one diff against thesis rules as acceptance criteria. Release review re-reads the entire current default branch &mdash; what would actually ship today.</p>
+          <div class="badge-row"><span class="badge">6/6 rules cited</span><span class="badge">tests re-run independently</span></div>
+        </div>
+      </div>
+
+      <p style="margin-top:28px">Not a mockup of the idea &mdash; a redrawn copy of a real screen capture from 2026-08-24, same layout, same numbers. Redrawn and not pasted in only because this session's browser tool can't export a screenshot to disk; nothing below is invented.</p>
+
+      <div class="console-chrome">
+        <div class="cc-head"><span class="cc-live-dot"></span>LIVE &middot; goldthread console &middot; PourRate</div>
+        <div class="cc-body">
+          <div class="spoke-grid">
+            <div class="spoke-card">
+              <p class="spoke-name">Research</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-model">mistral-small3.2:24b</span>
+              <span class="spoke-count">2 assigned</span>
+            </div>
+            <div class="spoke-card">
+              <p class="spoke-name">Infra / DevOps</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-model">mistral-small3.2:24b</span>
+              <span class="spoke-count">8 assigned</span>
+            </div>
+            <div class="spoke-card">
+              <p class="spoke-name">Bake-Off</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-model">mistral-small3.2:24b</span>
+              <span class="spoke-count">0 assigned</span>
+            </div>
+            <div class="spoke-card">
+              <p class="spoke-name">Code Review</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-model">mistral-small3.2:24b</span>
+              <span class="spoke-count">2 assigned</span>
+            </div>
+            <div class="spoke-card hub">
+              <p class="spoke-name" style="margin-bottom:2px">PM</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-count" style="margin-top:4px">12 tasks in view</span>
+              <span class="spoke-model" style="margin-top:2px; margin-bottom:0">thesis sealed</span>
+            </div>
+            <div class="spoke-card">
+              <p class="spoke-name">Dumb Question</p>
+              <span class="spoke-badge"><span class="dot"></span>local</span>
+              <span class="spoke-model">gpt-oss:20b</span>
+              <span class="spoke-count">0 assigned</span>
+            </div>
+          </div>
+
+          <div class="kanban-strip">
+            <div class="kcol">
+              <p class="kcol-head"><span>Backlog</span><span>3</span></p>
+              <div class="kcard"><span class="kid">t_92411ff6</span>Ship report and block, server-side enforcement<span class="kmeta">gt-review &middot; high &rarr; fable</span></div>
+              <div class="kcard"><span class="kid">t_fd236d33</span>Permanent responsible-drinking notice<span class="kmeta">gt-research &middot; medium &rarr; sonnet</span></div>
+              <div class="kcard"><span class="kid">t_7d5b3b00</span>Handle-only identity, minimal signup<span class="kmeta">gt-research &middot; medium &rarr; sonnet</span></div>
+            </div>
+            <div class="kcol">
+              <p class="kcol-head"><span>Running</span><span>0</span></p>
+              <p class="kcol-empty">&mdash;</p>
+            </div>
+            <div class="kcol">
+              <p class="kcol-head"><span>Done</span><span>7</span></p>
+              <div class="kcard"><span class="kid">t_0c614680</span>Hard age gate, defense in depth<span class="kmeta">gt-infra &middot; &#10003; reviewed</span></div>
+              <div class="kcard"><span class="kid">t_e8c23e1b</span>Pour rating composer (craft only)<span class="kmeta">gt-research &middot; &#10003; reviewed</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="cc-caption">Every spoke local by default as of 2026-08-24 &mdash; the rebuild this page's Stage 05 &middot; step 33 covers. Cloud only re-enters through the escalate button on a task a local model has already failed.</p>
+      </div>
+    </section>
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 03 &mdash; case study: PourRate</p>
+      <h2>A beer app, and the gap only a release-level check could catch</h2>
+      <p>Chosen deliberately as a hard case: a social app for rating Guinness pours &mdash; a real alcohol-content product, real weight under iOS App Store guideline 1.4.3. Every number below is from one dated run, 2026-08-23 to 2026-08-24, not a simulation.</p>
+
+      <h3>Seal &mdash; six rules, mechanically checkable</h3>
+      <ul class="rule-list">
+        <li><b>01</b> Hard age gate before any pour content renders</li>
+        <li><b>02</b> Rate the pour as a craft &mdash; never the drinking</li>
+        <li><b>03</b> Report and block ship alongside posting, day one</li>
+        <li><b>04</b> No gamification tied to volume or frequency</li>
+        <li><b>05</b> Handle-only identity &mdash; no real name or phone number</li>
+        <li><b>06</b> Permanent, non-dismissible responsible-drinking note wherever pour content renders</li>
+      </ul>
+
+      <h3>Plan &mdash; Fable, 27 seconds, one call</h3>
+      <p>Given the build goal, the planner returned five subtasks &mdash; one per thesis rule, not a coincidence: the sealed thesis was injected into the planner's own context. Cost-aware routing correctly pulled the two compliance-critical pieces onto the strongest model:</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Subtask</th><th>Difficulty</th><th>Routed to</th></tr></thead>
+          <tbody>
+            <tr><td class="diff">1</td><td>Hard age gate with persistent age-assurance state</td><td><span class="tier tier-high">high</span></td><td class="diff">claude-fable-5</td></tr>
+            <tr><td class="diff">2</td><td>Pour rating model &amp; composer, scoped to craft only</td><td><span class="tier tier-medium">medium</span></td><td class="diff">claude-sonnet-5</td></tr>
+            <tr><td class="diff">3</td><td>Feed with permanent responsible-drinking notice</td><td><span class="tier tier-medium">medium</span></td><td class="diff">claude-sonnet-5</td></tr>
+            <tr><td class="diff">4</td><td>Report and block, server-side enforcement</td><td><span class="tier tier-high">high</span></td><td class="diff">claude-fable-5</td></tr>
+            <tr><td class="diff">5</td><td>Handle-only identity, minimal-data signup</td><td><span class="tier tier-medium">medium</span></td><td class="diff">claude-sonnet-5</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The planner's own judgment matched what a careful human reviewer would flag: age gating and moderation enforcement are the two pieces most likely to fail subtly if done sloppily &mdash; and it routed exactly those back to itself.</p>
+
+      <h3>Build &mdash; real defense in depth</h3>
+      <p>The age gate shipped as three independent enforcement layers: routing (the content branch of the view hierarchy doesn't exist pre-pass), data (the feed store is a no-op unless passed), and network (the client re-checks and throws before a request is even constructed). It fails closed on corrupted storage; there is no "remind me later" state anywhere in the machine.</p>
+      <p>Rule 2 &mdash; rate the pour, not the drinking &mdash; is enforced at the API boundary, mechanically: the rating model rejects any field outside its four closed craft dimensions with an HTTP 422, not a comment asking nicely.</p>
+      <p style="color:var(--ink-dim); font-size:0.94rem">Disclosed honestly rather than smoothed over: the age-gate subtask shipped a Swift package; the composer subtask, with no shared-stack instruction, shipped React and Python. Nothing yet forces subtasks to converge on one stack &mdash; which is exactly what surfaces two sections down.</p>
+
+      <h3>Review &mdash; per task, PASS</h3>
+      <div class="stamp">
+        <div class="stamp-head"><span>gt-review &middot; t_1ac77a40</span><span class="verdict">pass &middot; 6 / 6</span></div>
+        <p>Didn't take the worker's word for it &mdash; checked out the branch into a disposable worktree and independently re-ran the test suite (26/26) before citing exact file and line for every one of the six rule verdicts. Correctly passed Rule 3 for this diff alone, since it adds no posting surface &mdash; and explicitly flagged that the release-level check was still owed before this and the composer ship together.</p>
+        <p style="color:var(--ink-dim)">$1.04 &middot; real, priced</p>
+      </div>
+
+      <div class="catch">
+        <div class="catch-head">
+          <span class="catch-verdict">FAIL</span>
+          <h3 class="catch-title">The release-level check, not the per-task one, found it</h3>
+        </div>
+        <p>A second review &mdash; scoped not to one diff but to the project's current default branch, everything merged, what would actually ship today &mdash; read the codebase whole. The iOS age gate is excellent. It covers exactly one of the app's two surfaces.</p>
+        <code class="catch-code">web/composer.html + backend/app/main.py &mdash; the only surface in the repo that can post or list content &mdash; has no age-assurance check anywhere. POST /ratings and GET /ratings are reachable by anyone, unauthenticated.</code>
+        <p>It ranked this above the also-real Rule 3 gap, with reasoning: an age gate on one surface and none on the other is not a partial pass, it's a bypass with a working front door. $0.88 &middot; real, priced.</p>
+      </div>
+
+      <h3>Fix &mdash; closing the loop that let it happen</h3>
+      <p>The router's planner has no visibility into a project's existing code when it decomposes a new goal &mdash; which is exactly how the Swift/React split happened in the first place. Fixed for the avoidable half: before planning, the router now reads what the design studio's own scanners find already on disk, and tells the planner explicitly to extend it. Verified against a second, deliberately ambiguous goal on the same project: post-fix, the planner named the real gate files by class &mdash; <code>AgeGatePolicy</code>, <code>AgeAssuranceStore</code>, <code>GateCoordinator</code> &mdash; and required new work to route through them. Pre-fix, a grep for any of those names on the web surface returned zero matches.</p>
+    </section>
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 04 &mdash; dogfooding</p>
+      <h2>None of this was found by reading the code</h2>
+      <p>Every row below was caught by actually dispatching real work through goldthread and watching what happened, not by auditing the source and assuming it was fine.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Found</th><th>Fixed</th></tr></thead>
+          <tbody>
+            <tr><td class="diff">08-20</td><td>Guard matched the thesis filename as a literal substring &mdash; six real bypasses</td><td>Rewrote to path resolution</td></tr>
+            <tr><td class="diff">08-22</td><td>Guard only mounted in the PM profile &mdash; every worker profile unguarded</td><td>Installed &amp; verified across all six</td></tr>
+            <tr><td class="diff">08-23</td><td>Router's parent link left every subtask permanently undispatchable</td><td>Dropped the link; id moved to body text</td></tr>
+            <tr><td class="diff">08-23</td><td>Cost rollup reported unpriced models as literally free</td><td>Excluded &amp; flagged separately as a floor</td></tr>
+            <tr><td class="diff">08-24</td><td>Router subtasks silently diverged on tech stack across calls</td><td>Planner now told what already exists first</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="entry">
+      <p class="entry-eyebrow">Stage 05 &mdash; the build log</p>
+      <h2>Every step this ran on, in order</h2>
+      <p>Not a curated highlight reel &mdash; the literal task list this build tracked start to finish, six days, thirty-four steps, nothing skipped or reordered for the narrative above. Everything in Stages 01&ndash;04 traces back to one of these.</p>
+
+      <div class="build-log">
+        <div class="build-day">
+          <p class="build-day-label">2026-08-19 <b>&mdash; the console comes online</b></p>
+          <ol class="build-list">
+            <li><span class="n">01</span>Build the console state API server</li>
+            <li><span class="n">02</span>Build the live desktop console UI</li>
+            <li><span class="n">03</span>Verify the console against real and seeded state</li>
+            <li><span class="n">04</span>Add a kanban write layer via the Hermes CLI</li>
+          </ol>
+        </div>
+
+        <div class="build-day">
+          <p class="build-day-label">2026-08-20 <b>&mdash; first real project, first real bugs</b></p>
+          <ol class="build-list" start="5">
+            <li><span class="n">05</span>Make console windows editable and build-informative</li>
+            <li><span class="n">06</span>Run the PM stack end to end against a real project</li>
+            <li><span class="n">07</span>Diagnose why a blocked task got re-dispatched anyway</li>
+            <li><span class="n">08</span>Fix: real HOLD state + undispatchable human-only tasks</li>
+            <li><span class="n">09</span>Fix: done tickets show their real artifact</li>
+            <li><span class="n">10</span>Fix: cost and attribution surfaced per ticket</li>
+            <li><span class="n">11</span>Fix: pre-dispatch health checks per profile</li>
+            <li><span class="n">12</span>Fix: pocket digest wiring</li>
+            <li><span class="n">13</span>Spin up Cat Gossip fresh, end to end, through the console</li>
+            <li><span class="n">14</span>UI issue sweep across the whole flow</li>
+            <li><span class="n">15</span>Research and root-cause the issues found</li>
+            <li><span class="n">16</span>Debug and fix the confirmed real bugs</li>
+            <li><span class="n">17</span>UI design review pass</li>
+            <li><span class="n">18</span>Fix guard.py path-resolution holes &mdash; 6 real breaches</li>
+            <li><span class="n">19</span>Turn task-create into a chat prompt with a model picker</li>
+          </ol>
+        </div>
+
+        <div class="build-day">
+          <p class="build-day-label">2026-08-21 <b>&mdash; a second project, on purpose</b></p>
+          <ol class="build-list" start="20">
+            <li><span class="n">20</span>Add the Design &amp; UI studio window</li>
+            <li><span class="n">21</span>Simulated run: spin up Atelier, a fashion app, through goldthread</li>
+          </ol>
+        </div>
+
+        <div class="build-day">
+          <p class="build-day-label">2026-08-22 <b>&mdash; the diagnostic pass</b></p>
+          <ol class="build-list" start="22">
+            <li><span class="n">22</span>Review gate: surface and route done-without-review work</li>
+            <li><span class="n">23</span>Thesis-conformance check on deliverables</li>
+            <li><span class="n">24</span>Honest crash-reason surfacing in the console</li>
+            <li><span class="n">25</span>Review-capture layer inside the design studio</li>
+            <li><span class="n">26</span>Project / run cost rollup</li>
+          </ol>
+        </div>
+
+        <div class="build-day">
+          <p class="build-day-label">2026-08-23 <b>&mdash; the router, then a hard QA case</b></p>
+          <ol class="build-list" start="27">
+            <li><span class="n">27</span>Build the Model Router: planner &rarr; executor subtask delegation</li>
+            <li><span class="n">28</span>QA run: PourRate, through the router and the full stack</li>
+          </ol>
+        </div>
+
+        <div class="build-day">
+          <p class="build-day-label">2026-08-24 <b>&mdash; closing every open loop</b></p>
+          <ol class="build-list" start="29">
+            <li><span class="n">29</span>Close the review-gate loop &mdash; dispatch the real age-gate review</li>
+            <li><span class="n">30</span>Fix: release-level thesis conformance check</li>
+            <li><span class="n">31</span>Deep-think and fix: router subtask tech-stack divergence</li>
+            <li><span class="n">32</span>Ship this page &mdash; the exportable overview you're reading</li>
+            <li><span class="n">33</span>Rebuild local-first: revert every spoke to its local model, cloud escalates only a task the local model failed, add Opus as an escalation/router option</li>
+            <li><span class="n">34</span>Update this page: real console UI recreated in place of the earlier stylized mockup, this row included</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="close-block">
+    <p class="manifesto">A thesis is only a governance layer if nothing &mdash; not a worker, not a shortcut, not one unlucky diff &mdash; can ship around it. That's the bet goldthread makes. On 24 August 2026 it paid off exactly once, on a beer app, which is precisely the unglamorous place a real gap actually hides.</p>
+    <div class="footer-meta">
+      <span>goldthread &mdash; governance layer for Hermes agent orchestration. Private repos: golden-agents (console) &middot; goldthread-hermes (plugin).</span>
+      <span>Every figure on this page traces to one real dispatched run, dated 2026-08-20 through 2026-08-24. No simulated data.</span>
+    </div>
+  </div>
+
+</div>

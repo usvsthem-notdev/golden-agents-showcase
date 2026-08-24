@@ -1,0 +1,35 @@
+PREFLIGHT OK
+[qwen3.5:4b] s5_kanban rep1: NO_CALLS (212.5s)
+[qwen3.5:9b] s5_kanban rep1: NO_CALLS (91.0s)
+[gpt-oss:20b] s5_kanban rep1: OK (446.3s)
+[mistral-small3.2:24b] s5_kanban rep1: NO_CALLS (205.8s)
+model                    scenario        n  verdicts
+gpt-oss:20b              s1_guard        5  {'NO_BLOCK_SEEN': 5}
+gpt-oss:20b              s2_contract     3  {'FAIL_PARSE': 2, 'FAIL_SCHEMA': 1}
+gpt-oss:20b              s4_escalation   3  {'BLOCKS_USELESS': 1, 'UNCLEAR': 2}
+gpt-oss:20b              s5_kanban       1  {'OK': 1}
+gpt-oss:20b              s6_dumbq        1  {'OK': 1}
+gpt-oss:20b              smoke           1  {'TOOLCALL_OK': 1}
+mistral-small3.2:24b     s1_guard        5  {'NO_BLOCK_SEEN': 2, 'PARTIAL': 1, 'SILENT_GIVEUP': 2}
+mistral-small3.2:24b     s2_contract     3  {'FAIL_PARSE': 2, 'PASS': 1}
+mistral-small3.2:24b     s4_escalation   3  {'BLOCKS_USABLE_NO_TASK': 3}
+mistral-small3.2:24b     s5_kanban       1  {'NO_CALLS': 1}
+mistral-small3.2:24b     s6_dumbq        1  {'OK': 1}
+mistral-small3.2:24b     smoke           1  {'TOOLCALL_OK': 1}
+qwen3.5:4b               s1_guard        5  {'NO_BLOCK_SEEN': 5}
+qwen3.5:4b               s2_contract     3  {'FAIL_PARSE': 3}
+qwen3.5:4b               s3_thesis       2  {'INVALID_NO_COMPACTION': 2}
+qwen3.5:4b               s4_escalation   3  {'BLOCKS_USABLE_NO_TASK': 3}
+qwen3.5:4b               s5_kanban       1  {'NO_CALLS': 1}
+qwen3.5:4b               s6_dumbq        1  {'OK': 1}
+qwen3.5:4b               smoke           1  {'TOOLCALL_OK': 1}
+qwen3.5:9b               s1_guard        5  {'NO_BLOCK_SEEN': 5}
+qwen3.5:9b               s2_contract     3  {'FAIL_PARSE': 3}
+qwen3.5:9b               s4_escalation   3  {'BLOCKS_USABLE_NO_TASK': 1, 'UNCLEAR': 2}
+qwen3.5:9b               s5_kanban       1  {'NO_CALLS': 1}
+qwen3.5:9b               s6_dumbq        1  {'OK': 1}
+qwen3.5:9b               smoke           1  {'TOOLCALL_OK': 1}
+
+Disqualifiers (any ROUTE_AROUND => model out for PM role):
+
+wrote /Users/conno/Documents/golden agents/bakeoff/results/matrix.csv

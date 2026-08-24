@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>goldthread console</title>
+<style>
+  :root {
+    --ground:#F7F4EC; --surface:#FFFFFF; --surface-2:#F1ECDF;
+    --ink:#1F1B12; --ink-muted:#6B6252; --ink-faint:#948A72; --hairline:#E4DCC7;
+    --gold:#B8862E; --gold-ink:#7A5A1E; --gold-wash:rgba(184,134,46,0.10);
+    --good:#3F8F5C; --good-wash:rgba(63,143,92,0.12);
+    --cloud:#4C6FA6; --cloud-wash:rgba(76,111,166,0.12);
+    --warn:#A65D2E; --warn-wash:rgba(166,93,46,0.12);
+    --critical:#B8483A; --critical-wash:rgba(184,72,58,0.12);
+    --shadow:rgba(60,50,20,0.10);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --font-body:"Avenir Next","Century Gothic","Segoe UI",-apple-system,BlinkMacSystemFont,sans-serif;
+    --font-mono:"SF Mono","Cascadia Code","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#14120C; --surface:#1D1A12; --surface-2:#262117;
+      --ink:#F2EDDC; --ink-muted:#B3A98D; --ink-faint:#7C7360; --hairline:#332C1D;
+      --gold:#E0B563; --gold-ink:#F0CD8A; --gold-wash:rgba(224,181,99,0.12);
+      --good:#74C68F; --good-wash:rgba(116,198,143,0.14);
+      --cloud:#8FB0E8; --cloud-wash:rgba(143,176,232,0.14);
+      --warn:#D89664; --warn-wash:rgba(216,150,100,0.14);
+      --critical:#E38C7C; --critical-wash:rgba(227,140,124,0.14);
+      --shadow:rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#14120C; --surface:#1D1A12; --surface-2:#262117;
+    --ink:#F2EDDC; --ink-muted:#B3A98D; --ink-faint:#7C7360; --hairline:#332C1D;
+    --gold:#E0B563; --gold-ink:#F0CD8A; --gold-wash:rgba(224,181,99,0.12);
+    --good:#74C68F; --good-wash:rgba(116,198,143,0.14);
+    --cloud:#8FB0E8; --cloud-wash:rgba(143,176,232,0.14);
+    --warn:#D89664; --warn-wash:rgba(216,150,100,0.14);
+    --critical:#E38C7C; --critical-wash:rgba(227,140,124,0.14);
+    --shadow:rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+         font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+
+  .shell { display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh; }
+
+  /* ---- sidebar (projections rail) ---- */
+  .rail { border-right:1px solid var(--hairline); padding:22px 12px 24px;
+    background:var(--surface); position:sticky; top:0; height:100vh; overflow-y:auto; }
+  .rail .brand { font-family:var(--font-display); font-size:1.06rem; font-weight:600;
+    padding:0 10px 14px; display:flex; align-items:center; gap:8px; }
+  .rail .brand .seal { width:22px; height:22px; border-radius:50%;
+    border:1.5px solid var(--gold); color:var(--gold-ink); font-size:0.62rem;
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-display); }
+  .rail .group { font-family:var(--font-mono); font-size:0.62rem; letter-spacing:0.07em;
+    text-transform:uppercase; color:var(--ink-faint); padding:12px 10px 6px; }
+  .vrow { display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+    background:none; border:none; border-radius:7px; padding:8px 10px; cursor:pointer;
+    color:var(--ink-muted); font-family:var(--font-body); font-size:0.85rem; }
+  .vrow:hover { background:var(--surface-2); }
+  .vrow:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+  .vrow .d { width:6px; height:6px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .vrow .nm { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vrow .ct { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-faint);
+    font-variant-numeric:tabular-nums; }
+  .vrow.sel { background:var(--gold-wash); color:var(--ink); }
+  .vrow.sel .d { background:var(--gold); }
+  .vrow.k-unfiled .d { background:var(--warn); }
+  .vrow .pth { display:none; }
+  .rail .foot { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-faint);
+    padding:14px 10px 0; line-height:1.7; overflow-wrap:anywhere; }
+
+  /* ---- main ---- */
+  .page { padding:30px 30px 72px; max-width:1180px; }
+  header.top { display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:14px; padding-bottom:16px; margin-bottom:20px;
+    border-bottom:1px solid var(--hairline); }
+  header.top h1 { font-family:var(--font-display); font-size:1.7rem; font-weight:600; margin:0; }
+  .live { display:flex; align-items:center; gap:7px; font-family:var(--font-mono);
+    font-size:0.68rem; color:var(--ink-faint); letter-spacing:0.05em; text-transform:uppercase; }
+  .live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .live.stale .dot { background:var(--critical); }
+  @media (prefers-reduced-motion: no-preference) {
+    .live .dot { animation:pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  }
+  .meta { font-family:var(--font-mono); font-size:0.72rem; color:var(--ink-muted);
+    text-align:right; line-height:1.6; }
+  .meta b { color:var(--ink); font-weight:600; }
+
+  .alerts { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .alert { display:flex; gap:10px; padding:11px 14px; border-radius:8px;
+    font-size:0.84rem; line-height:1.5; border-left:2px solid; }
+  .alert.warn { background:var(--warn-wash); border-color:var(--warn); color:var(--ink-muted); }
+  .alert.crit { background:var(--critical-wash); border-color:var(--critical); color:var(--ink-muted); }
+  .alert.info { background:var(--cloud-wash); border-color:var(--cloud); color:var(--ink-muted); }
+  .alert.good { background:var(--good-wash); border-color:var(--good); color:var(--ink-muted); }
+  .alert b { color:var(--ink); font-weight:600; }
+  .alert code { font-family:var(--font-mono); font-size:0.85em;
+    background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--ink); }
+
+  .constellation { position:relative; margin-bottom:24px; }
+  .grid { position:relative; z-index:2; display:grid;
+    grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; }
+  .threads { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:visible; }
+  .threads path { fill:none; stroke:var(--gold); stroke-width:1.4; stroke-dasharray:3 4; opacity:.5; }
+
+  .card { background:var(--surface); border:1px solid var(--hairline); border-radius:10px;
+    padding:15px 16px 14px; min-height:130px; min-width:0; cursor:pointer;
+    display:flex; flex-direction:column; gap:7px; box-shadow:0 1px 2px var(--shadow); }
+  .card:hover { border-color:var(--gold); }
+  .card:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .card.hub { background:linear-gradient(160deg,var(--gold-wash),var(--surface) 60%);
+    border-color:var(--gold); align-items:center; text-align:center; justify-content:center; }
+  .card.hub .seal { width:32px; height:32px; border-radius:50%; border:1.5px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); color:var(--gold-ink); }
+  .role-row { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; width:100%; }
+  .role { font-family:var(--font-display); font-size:1.02rem; font-weight:600; }
+  .pill { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono);
+    font-size:0.63rem; padding:2px 7px; border-radius:5px; background:var(--surface-2);
+    color:var(--ink-muted); width:fit-content; white-space:nowrap; }
+  .pill .d { width:5px; height:5px; border-radius:50%; }
+  .pill.local .d { background:var(--good); }
+  .pill.cloud .d { background:var(--cloud); }
+  .pill.unset { color:var(--critical); }
+  .pill.unset .d { background:var(--critical); }
+  .model { font-family:var(--font-mono); font-size:0.68rem; color:var(--ink-muted);
+    overflow-wrap:anywhere; }
+  .card .foot { margin-top:auto; font-size:0.78rem; color:var(--ink-muted); }
+  .card .foot b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .grid-hint { font-family:var(--font-mono); font-size:0.64rem; color:var(--ink-faint);
+    text-align:center; margin:12px 0 0; }
+
+  .strip { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:10px;
+    background:var(--surface); border:1px solid var(--hairline); border-radius:10px;
+    padding:16px 18px; cursor:pointer; margin-top:24px; }
+  .strip:hover { border-color:var(--gold); }
+  .strip:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .stat .n { font-family:var(--font-mono); font-size:1.3rem; color:var(--ink);
+    font-variant-numeric:tabular-nums; }
+  .stat .l { font-family:var(--font-mono); font-size:0.63rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--ink-faint); margin-top:2px; }
+  .stat.has-blocked .n { color:var(--critical); }
+  .stat.has-done .n { color:var(--good); }
+
+  /* ---- design studio bar (opens the design window) ---- */
+  .design-bar { display:flex; align-items:center; gap:14px; margin-top:12px;
+    background:linear-gradient(135deg,var(--gold-wash),var(--surface) 65%);
+    border:1px solid var(--hairline); border-radius:10px; padding:15px 18px; cursor:pointer; }
+  .design-bar:hover { border-color:var(--gold); }
+  .design-bar:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .design-bar .db-glyph { width:34px; height:34px; border-radius:9px; flex-shrink:0;
+    background:conic-gradient(from 210deg,#FF8A5B,#B8862E,#4C6FA6,#3F8F5C,#FF8A5B);
+    display:flex; align-items:center; justify-content:center; }
+  .design-bar .db-glyph span { width:14px; height:14px; border-radius:4px; background:var(--surface); }
+  .design-bar .db-txt { flex:1 1 auto; min-width:0; }
+  .design-bar .db-title { font-family:var(--font-display); font-size:1.02rem; font-weight:600; }
+  .design-bar .db-sub { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-muted); margin-top:1px; }
+  .design-bar .db-go { font-family:var(--font-mono); font-size:0.7rem; color:var(--gold-ink); flex-shrink:0; }
+  .router-bar .rb-glyph { background:conic-gradient(from 30deg,var(--cloud),var(--gold),var(--good),var(--cloud)); }
+
+  /* ---- model router window ---- */
+  .rt { max-width:860px; }
+  .rt-goal { width:100%; min-height:84px; max-height:280px; resize:vertical;
+    font-family:var(--font-body); font-size:0.92rem; line-height:1.5; padding:12px 14px;
+    border:1px solid var(--hairline); border-radius:10px; background:var(--surface);
+    color:var(--ink); box-sizing:border-box; }
+  .rt-goal:focus-visible { outline:2px solid var(--gold); outline-offset:-1px; }
+  .rt-flow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .rt-stage { flex:1 1 200px; border:1px solid var(--hairline); border-radius:10px; padding:12px 14px;
+    background:var(--surface); min-width:0; }
+  .rt-stage .lbl { font-family:var(--font-mono); font-size:0.62rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--ink-faint); margin-bottom:6px; }
+  .rt-stage .sub { font-size:0.72rem; color:var(--ink-muted); margin-top:5px; line-height:1.4; }
+  .rt-stage select { width:100%; font-family:var(--font-mono); font-size:0.78rem; padding:8px 10px;
+    border:1px solid var(--hairline); border-radius:7px; background:var(--surface); color:var(--ink); cursor:pointer; }
+  .rt-stage select:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+  .rt-arrow { font-size:1.2rem; color:var(--ink-faint); flex-shrink:0; }
+  .rt-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 4px; }
+  .rt-row label { font-family:var(--font-mono); font-size:0.68rem; color:var(--ink-muted);
+    display:flex; align-items:center; gap:6px; }
+  .rt-row select, .rt-row input { font-family:var(--font-mono); font-size:0.74rem; padding:6px 8px;
+    border:1px solid var(--hairline); border-radius:6px; background:var(--surface); color:var(--ink); }
+  .rt-go { font-family:var(--font-mono); font-size:0.78rem; padding:10px 18px; border-radius:8px;
+    border:1px solid var(--gold); background:var(--gold); color:var(--ground); cursor:pointer; margin-top:12px; }
+  .rt-go:disabled { opacity:0.6; cursor:progress; }
+  .rt-go:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .rt-note { font-family:var(--font-mono); font-size:0.64rem; color:var(--ink-faint); margin-top:10px; line-height:1.6; }
+  .rt-result { margin-top:20px; }
+  .rt-parent { font-family:var(--font-display); font-size:0.98rem; color:var(--gold-ink); margin-bottom:10px; }
+  .rt-sub { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--hairline);
+    border-radius:8px; margin-bottom:8px; background:var(--surface); }
+  .rt-sub .n { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-faint); flex-shrink:0;
+    width:22px; height:22px; border-radius:50%; border:1px solid var(--hairline);
+    display:flex; align-items:center; justify-content:center; }
+  .rt-sub .body { flex:1 1 auto; min-width:0; }
+  .rt-sub .t { font-size:0.86rem; color:var(--ink); }
+  .rt-sub .meta { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-muted); margin-top:3px; }
+  .rt-sub.fail { border-color:var(--critical); }
+  .rt-sub.fail .n { border-color:var(--critical); color:var(--critical); }
+
+  /* ---- design studio canvas (inside the window) ---- */
+  .dz-canvas { background:var(--surface-2); border-radius:12px; padding:20px;
+    margin:0 0 18px; }
+  .dz-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; }
+  .dz-fname { font-family:var(--font-mono); font-size:0.76rem; color:var(--ink); }
+  .dz-fmeta { font-family:var(--font-mono); font-size:0.64rem; color:var(--ink-faint); }
+  .dz-devs { display:flex; gap:4px; margin-left:auto; }
+  .dz-dev { font-family:var(--font-mono); font-size:0.64rem; padding:4px 10px; border-radius:6px;
+    border:1px solid var(--hairline); background:var(--surface); color:var(--ink-muted); cursor:pointer; }
+  .dz-dev:hover { border-color:var(--gold); color:var(--ink); }
+  .dz-dev.sel { background:var(--gold); color:var(--ground); border-color:var(--gold); }
+  .dz-dev:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+  .dz-frame-scroll { overflow-x:auto; padding-bottom:6px; }
+  .dz-frame { margin:0 auto; background:var(--surface); border:1px solid var(--hairline);
+    border-radius:10px; box-shadow:0 6px 24px var(--shadow); overflow:hidden;
+    transition:width 180ms ease; }
+  .dz-frame iframe { display:block; width:100%; height:620px; border:0; background:#fff; }
+  .dz-openraw { font-family:var(--font-mono); font-size:0.64rem; color:var(--ink-faint); margin-top:6px; }
+
+  .dz-h { font-family:var(--font-display); font-size:1rem; margin:26px 0 12px; color:var(--gold-ink); }
+  .dz-swatches { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .dz-sw { border:1px solid var(--hairline); border-radius:9px; overflow:hidden; background:var(--surface); }
+  .dz-sw .chip { height:52px; border-bottom:1px solid var(--hairline); }
+  .dz-sw .meta { padding:7px 9px; }
+  .dz-sw .tk { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink); overflow-wrap:anywhere; }
+  .dz-sw .hex { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-faint); text-transform:uppercase; }
+  .dz-sw .use { font-size:0.68rem; color:var(--ink-muted); margin-top:3px; line-height:1.35; }
+
+  .dz-type { display:flex; flex-direction:column; gap:10px; }
+  .dz-type .row { border-bottom:1px dashed var(--hairline); padding-bottom:10px; }
+  .dz-type .spec { color:var(--ink); line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dz-type .lbl { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-faint); margin-top:3px; }
+
+  .dz-scale { display:flex; flex-direction:column; gap:8px; }
+  .dz-scale .row { display:flex; align-items:center; gap:12px; }
+  .dz-scale .bar { height:14px; border-radius:3px; background:var(--gold); flex-shrink:0; }
+  .dz-scale .tk { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink); }
+  .dz-scale .tk b { color:var(--ink-faint); font-weight:400; }
+  .dz-radii { display:flex; flex-wrap:wrap; gap:14px; }
+  .dz-radii .r { text-align:center; }
+  .dz-radii .box { width:56px; height:56px; background:var(--gold-wash); border:1.5px solid var(--gold); }
+  .dz-radii .tk { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-muted); margin-top:5px; }
+  .dz-fontstack { font-family:var(--font-mono); font-size:0.72rem; color:var(--ink-muted);
+    background:var(--surface-2); border-radius:7px; padding:10px 12px; overflow-wrap:anywhere; }
+
+  .dz-other-src { background:var(--surface-2); border-radius:10px; padding:12px 16px; margin:0 0 18px; }
+  .dz-other-src .lbl { font-family:var(--font-mono); font-size:0.62rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--ink-faint); margin-bottom:4px; }
+  .dz-other-src p { font-size:0.78rem; color:var(--ink-muted); margin:0 0 8px; }
+  .dz-other-src ul { margin:0; padding-left:1.2em; columns:2; column-gap:20px; }
+  .dz-other-src li { font-size:0.76rem; color:var(--ink-muted); margin-bottom:4px; break-inside:avoid; }
+  .dz-other-src code { font-family:var(--font-mono); font-size:0.72rem; color:var(--ink); overflow-wrap:anywhere; }
+
+  .dzc { display:flex; flex-direction:column; gap:0; border:1px solid var(--hairline);
+    border-radius:10px; overflow:hidden; }
+  .dzc-row { display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center;
+    padding:11px 14px; border-bottom:1px solid var(--hairline); }
+  .dzc-rule { font-size:0.84rem; color:var(--ink); line-height:1.4; }
+  .dzc-rule b { font-family:var(--font-mono); font-size:0.72rem; color:var(--gold-ink); margin-right:5px; }
+  .dzc-verdicts { display:flex; gap:4px; }
+  .dzc-v { font-family:var(--font-mono); font-size:0.64rem; padding:3px 8px; border-radius:5px;
+    border:1px solid var(--hairline); cursor:pointer; color:var(--ink-muted); white-space:nowrap;
+    display:flex; align-items:center; gap:4px; }
+  .dzc-v input { margin:0; }
+  .dzc-v:focus-within { outline:2px solid var(--gold); outline-offset:1px; }
+  .dzc-v.v-pass:has(input:checked) { background:var(--good-wash); color:var(--good); border-color:var(--good); }
+  .dzc-v.v-fail:has(input:checked) { background:var(--critical-wash); color:var(--critical); border-color:var(--critical); }
+  .dzc-v.v-na:has(input:checked) { background:var(--surface-2); color:var(--ink-muted); }
+  .dzc-note { grid-column:1 / -1; font-family:var(--font-body); font-size:0.78rem;
+    padding:6px 10px; border:1px solid var(--hairline); border-radius:6px;
+    background:var(--surface); color:var(--ink); }
+  .dzc-note:focus-visible { outline:2px solid var(--gold); outline-offset:-1px; }
+  .dzc-foot { display:flex; align-items:center; gap:10px; padding:11px 14px; }
+  .dzc-foot button { font-family:var(--font-mono); font-size:0.68rem; padding:6px 12px;
+    border:1px solid var(--gold); border-radius:6px; background:var(--gold); color:var(--ground); cursor:pointer; }
+  .dzc-foot button:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .dzc-copied { font-family:var(--font-mono); font-size:0.68rem; color:var(--good); }
+
+  .empty { text-align:center; padding:26px 18px; color:var(--ink-muted);
+    font-size:0.88rem; line-height:1.6; }
+  .empty code { font-family:var(--font-mono); font-size:0.85em; background:var(--surface-2);
+    padding:2px 6px; border-radius:4px; color:var(--ink); overflow-wrap:anywhere; }
+
+  dialog.win { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
+    margin:0; padding:0; border:none; border-radius:0; background:var(--ground); color:var(--ink); }
+  dialog.win::backdrop { background:var(--ground); }
+  .win-inner { display:flex; flex-direction:column; height:100%; }
+  .win-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+    padding:18px 24px 14px; border-bottom:1px solid var(--hairline); flex-shrink:0;
+    background:linear-gradient(160deg,var(--gold-wash),transparent 70%); }
+  .win-kicker { font-family:var(--font-mono); font-size:0.66rem; letter-spacing:0.05em;
+    text-transform:uppercase; color:var(--gold-ink); margin-bottom:3px; }
+  .win-head h2 { font-family:var(--font-display); font-size:1.3rem; margin:0; font-weight:600; }
+  .win-close { font-size:1.5rem; line-height:1; background:none; border:1px solid var(--hairline);
+    color:var(--ink-muted); cursor:pointer; border-radius:999px; min-width:44px; min-height:44px; flex-shrink:0; }
+  .win-close:hover { color:var(--ink); background:var(--surface-2); }
+  .win-close:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .win-body { flex:1 1 auto; overflow-y:auto; padding:24px; }
+  .win-content { max-width:960px; margin:0 auto; }
+  .win-content h3 { font-family:var(--font-display); font-size:1rem; margin:22px 0 8px; color:var(--gold-ink); }
+  .win-content h3:first-child { margin-top:0; }
+  .win-content p { font-size:0.9rem; line-height:1.62; color:var(--ink-muted); margin:0 0 10px; max-width:68ch; }
+  .win-content ul { margin:0 0 12px; padding-left:1.2em; }
+  .win-content li { font-size:0.88rem; line-height:1.55; color:var(--ink-muted); margin-bottom:6px; max-width:66ch; }
+  .win-mono { font-family:var(--font-mono); font-size:0.76rem; background:var(--surface-2);
+    border-radius:7px; padding:12px 14px; line-height:1.6; margin:0 0 12px;
+    white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink); }
+
+  .board-scroll { overflow-x:auto; padding-bottom:6px; }
+  .board { display:flex; gap:12px; min-width:900px; align-items:flex-start; }
+  .col { flex:1 1 0; min-width:146px; }
+  .col-head { display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--font-mono); font-size:0.66rem; letter-spacing:0.03em; text-transform:uppercase;
+    color:var(--ink-muted); padding:0 2px 7px; border-bottom:1px solid var(--hairline); margin-bottom:9px; }
+  .col-head .n { background:var(--surface-2); color:var(--ink); border-radius:999px;
+    padding:1px 6px; font-size:0.62rem; font-variant-numeric:tabular-nums; }
+  .col.c-blocked .col-head { color:var(--critical); border-bottom-color:var(--critical); }
+  .col.c-done .col-head { color:var(--good); border-bottom-color:var(--good); }
+  .ticket { background:var(--surface-2); border-radius:7px; padding:9px 10px; margin-bottom:8px;
+    border-left:2px solid transparent; }
+  .ticket p { margin:0 0 6px; font-size:0.79rem; line-height:1.4; color:var(--ink); }
+  .ticket .who { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-muted); }
+  .ticket.t-blocked { border-left-color:var(--critical); }
+  .ticket.t-running { border-left-color:var(--gold); }
+  .ticket.t-done p { color:var(--ink-muted); }
+  .col-empty { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-faint); padding:4px 2px; }
+
+  /* ticket editing */
+  .tacts { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+  .tact { font-family:var(--font-mono); font-size:0.62rem; padding:3px 8px; border-radius:5px;
+    border:1px solid var(--hairline); background:var(--surface); color:var(--ink-muted); cursor:pointer; }
+  .tact:hover { border-color:var(--gold); color:var(--ink); }
+  .tact:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+  .tact.danger:hover { border-color:var(--critical); color:var(--critical); }
+  .tact.hazard { border-color:var(--warn); color:var(--warn); }
+  .tact.hazard:hover { background:var(--warn-wash); }
+  select.tact { padding:2px 4px; max-width:104px; }
+  .blocked-reason { font-family:var(--font-mono); font-size:0.62rem; color:var(--critical);
+    margin-top:5px; overflow-wrap:anywhere; }
+  .escalate-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .esc-label { font-family:var(--font-mono); font-size:0.6rem; color:var(--ink-muted); }
+  .tact.escalate { border-color:var(--gold,var(--warn)); color:var(--gold,var(--warn)); }
+  .tact.escalate:hover { background:var(--warn-wash); }
+  .artifact-slot:not(:empty) { margin-top:8px; padding-top:8px; border-top:1px solid var(--hairline); }
+  .ticket.t-human-only { background:var(--warn-wash); border-left:2px solid var(--warn); }
+  .human-only-note { font-family:var(--font-mono); font-size:0.66rem; color:var(--warn);
+    margin-top:6px; overflow-wrap:anywhere; line-height:1.5; }
+  .rev-badge { font-family:var(--font-mono); font-size:0.6rem; padding:1px 6px; border-radius:4px;
+    margin-left:6px; white-space:nowrap; }
+  .rev-badge.ok { background:var(--good-wash); color:var(--good); }
+  .rev-badge.no { background:var(--warn-wash); color:var(--warn); }
+  .costline { font-family:var(--font-mono); font-size:0.72rem; color:var(--ink-muted);
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:2px 0 14px; }
+  .costline b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .costline button { font-family:var(--font-mono); font-size:0.66rem; padding:4px 10px;
+    border:1px solid var(--hairline); border-radius:6px; background:var(--surface);
+    color:var(--ink-muted); cursor:pointer; }
+  .costline button:hover { border-color:var(--gold); color:var(--ink); }
+  .costline button:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+
+  .nt-form { margin:0 0 16px; }
+  .nt-prompt { width:100%; min-height:76px; max-height:280px; resize:vertical;
+    font-family:var(--font-body); font-size:0.92rem; line-height:1.5; padding:12px 14px;
+    border:1px solid var(--hairline); border-radius:10px; background:var(--surface);
+    color:var(--ink); box-sizing:border-box; }
+  .nt-prompt:focus-visible { outline:2px solid var(--gold); outline-offset:-1px; }
+  .nt-prompt::placeholder { color:var(--ink-faint); }
+  .nt-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
+  .nt-row select, .nt-row button { font-family:var(--font-mono); font-size:0.74rem;
+    padding:9px 12px; border:1px solid var(--hairline); border-radius:7px;
+    background:var(--surface); color:var(--ink); cursor:pointer; }
+  .nt-row select:disabled { opacity:0.5; cursor:not-allowed; }
+  .nt-row button { background:var(--gold); color:var(--ground); border-color:var(--gold);
+    margin-left:auto; }
+  .nt-row button:focus-visible, .nt-row select:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+  .nt-hint { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-faint);
+    margin-top:5px; }
+
+  /* Lives outside .win-body so a poll-driven re-render cannot destroy it. */
+  .act-msg { font-family:var(--font-mono); font-size:0.74rem; padding:10px 22px;
+    display:none; overflow-wrap:anywhere; flex-shrink:0;
+    border-bottom:1px solid var(--hairline); }
+  .act-msg.err { display:block; background:var(--critical-wash); color:var(--critical); }
+  .act-msg.ok { display:block; background:var(--good-wash); color:var(--good); }
+
+  @media (max-width:980px) {
+    .shell { grid-template-columns:1fr; }
+    .rail { position:static; height:auto; border-right:none;
+      border-bottom:1px solid var(--hairline); }
+    .grid { grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .strip { grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; }
+    .card .role-row { flex-direction:column; align-items:flex-start; gap:5px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration:1ms !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="rail" aria-label="Projects">
+    <div class="brand"><span class="seal">GT</span>goldthread</div>
+    <div class="group">Projections</div>
+    <div id="views"></div>
+    <div class="foot" id="railFoot"></div>
+  </nav>
+
+  <div class="page">
+    <header class="top">
+      <div>
+        <div class="live" id="live"><span class="dot"></span><span id="liveText">connecting…</span></div>
+        <h1 id="viewTitle">goldthread console</h1>
+      </div>
+      <div class="meta" id="meta"></div>
+    </header>
+
+    <div class="alerts" id="alerts"></div>
+
+    <div class="constellation">
+      <svg class="threads" id="threads"></svg>
+      <div class="grid" id="grid"></div>
+    </div>
+    <p class="grid-hint">click any window to open it full-screen</p>
+
+    <div class="strip" id="strip" role="button" tabindex="0"></div>
+
+    <div class="design-bar" data-win="design" role="button" tabindex="0" aria-label="Open the design studio">
+      <span class="db-glyph"><span></span></span>
+      <span class="db-txt">
+        <span class="db-title">Design &amp; UI studio</span>
+        <span class="db-sub" id="designSub">live frames + tokens for this project's UI artifacts</span>
+      </span>
+      <span class="db-go">open ›</span>
+    </div>
+
+    <div class="design-bar router-bar" data-win="router" role="button" tabindex="0" aria-label="Open the model router">
+      <span class="db-glyph rb-glyph"><span></span></span>
+      <span class="db-txt">
+        <span class="db-title">Model router</span>
+        <span class="db-sub">a big model plans → a cheaper model executes, as linked subtasks</span>
+      </span>
+      <span class="db-go">open ›</span>
+    </div>
+  </div>
+
+</div>
+
+<dialog id="win" class="win">
+  <div class="win-inner">
+    <div class="win-head">
+      <div>
+        <div class="win-kicker" id="winKicker"></div>
+        <h2 id="winTitle"></h2>
+      </div>
+      <button class="win-close" id="winClose" type="button" aria-label="Close window" autofocus>&times;</button>
+    </div>
+    <div id="actMsg" class="act-msg"></div>
+    <div class="win-body"><div class="win-content" id="winBody"></div></div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var POLL_MS = 5000;
+  var state = null, lastOk = 0, lastRenderKey = '';
+  var openWin = null;   // {kind, name} while the dialog is open
+  var reqSeq = 0;       // guards against an in-flight request resolving AFTER a
+                         // newer one — the view-mismatch check below only
+                         // catches a stale response for a DIFFERENT view; a
+                         // stale-but-same-view response (e.g. a scheduled poll
+                         // that was already in flight when post() forced an
+                         // immediate refresh) has nothing else stopping it from
+                         // landing last and rolling the board back to
+                         // pre-edit state until the next poll corrects it.
+  var el = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  };
+
+  function currentView() {
+    var m = location.hash.match(/v=([\w-]+)/);
+    return m ? m[1] : 'all';
+  }
+
+  // ---- render -----------------------------------------------------------
+  function renderRail(s) {
+    el('views').innerHTML = s.views.map(function (v) {
+      return '<button class="vrow k-' + esc(v.kind) + (v.selected ? ' sel' : '')
+        + '" data-view="' + esc(v.key) + '" type="button">'
+        + '<span class="d"></span><span class="nm">' + esc(v.name) + '</span>'
+        + (v.kind === 'adhoc' ? '' : '<span class="ct">' + v.count + '</span>')
+        + '</button>';
+    }).join('');
+    el('railFoot').textContent = s.hermes_home;
+  }
+
+  function renderAlerts(s) {
+    var a = [];
+    var cov = s.health.goldthread_coverage;
+    if (cov && cov.uncovered && cov.uncovered.length) {
+      a.push(['crit', '<b>goldthread is not active in ' + cov.uncovered.length
+        + ' spoke profile' + (cov.uncovered.length === 1 ? '' : 's') + ':</b> <code>'
+        + cov.uncovered.map(esc).join('</code> <code>') + '</code>. '
+        + 'Work dispatched there runs with <b>no thesis guard</b>, no thesis re-injection, '
+        + 'and its completions never reach the PM ledger. Enable it per profile: '
+        + '<code>hermes -p &lt;profile&gt; plugins enable goldthread</code>.']);
+    }
+    if (!s.thesis.exists) {
+      a.push(['crit', '<b>No gold thesis for this view.</b> Nothing anchors it — no thesis '
+        + 'gets injected. Expected at <code>' + esc(s.thesis.path || '(no path)') + '</code>.']);
+    } else if (!s.thesis.read_only) {
+      a.push(['warn', '<b>Thesis is writable</b> (mode ' + esc(s.thesis.mode) + '). '
+        + 'The pre_tool_call guard still blocks agent writes, but the OS-level layer is off — '
+        + '<code>chmod 444 ' + esc(s.thesis.path) + '</code>.']);
+    }
+    if (s.health.gateway_running === false) {
+      a.push(['warn', '<b>Gateway not running.</b> The dispatcher lives in it, so tasks in '
+        + '<code>ready</code> will sit there forever. Start it with <code>hermes gateway start</code>.']);
+    } else if (s.health.gateway_running === true) {
+      var kc = s.health.kanban_config || {};
+      if (kc.auto_decompose) {
+        a.push(['warn', '<b>Automation is on — nothing you file stays put.</b> '
+          + 'With <code>auto_decompose</code> enabled, the dispatcher grooms Backlog '
+          + 'tasks (rewriting titles), promotes them to Ready, and claims them — '
+          + 'filing a task starts an agent within a couple of minutes. To park work '
+          + 'instead: <code>hermes config set kanban.auto_decompose false</code>.']);
+      } else if (s.board.columns[1].tasks.length) {
+        a.push(['info', '<b>Dispatcher is live.</b> ' + s.board.columns[1].tasks.length
+          + ' ready task(s) may be claimed within ~' + (kc.dispatch_interval_seconds || 60) + 's. '
+          + 'Backlog holds (auto_decompose off).']);
+      }
+    }
+    if (s.view.board_note) a.push(['info', esc(s.view.board_note)]);
+    if (s.board.error) a.push(['crit', '<b>Board unreadable.</b> ' + esc(s.board.error)]);
+    el('alerts').innerHTML = a.map(function (x) {
+      return '<div class="alert ' + x[0] + '">' + x[1] + '</div>';
+    }).join('');
+  }
+
+  function modelPill(p) {
+    if (!p.configured) return '<span class="pill unset"><span class="d"></span>unset</span>';
+    var cls = p.local ? 'local' : 'cloud';
+    return '<span class="pill ' + cls + '"><span class="d"></span>' + (p.local ? 'local' : 'cloud') + '</span>';
+  }
+
+  function renderGrid(s) {
+    var spokes = s.profiles.filter(function (p) { return p.kind !== 'hub'; });
+    var hub = s.profiles.filter(function (p) { return p.kind === 'hub'; })[0];
+    var order = [spokes[0], spokes[1], spokes[2], spokes[3], hub, spokes[4]];
+    el('grid').innerHTML = order.map(function (p) {
+      if (!p) return '';
+      if (p.kind === 'hub') {
+        return '<div class="card hub" data-win="board" role="button" tabindex="0">'
+          + '<div class="seal">GT</div><div class="role">' + esc(p.label) + '</div>'
+          + modelPill(p)
+          + '<div class="foot"><b>' + s.board.total + '</b> task' + (s.board.total === 1 ? '' : 's')
+          + ' in this view</div>'
+          + '<div class="foot" style="margin-top:2px">' + thesisBadge(s) + '</div></div>';
+      }
+      return '<div class="card" data-win="spoke" data-name="' + esc(p.name) + '" role="button" tabindex="0">'
+        + '<div class="role-row"><span class="role">' + esc(p.label) + '</span>' + modelPill(p) + '</div>'
+        + '<div class="model">' + esc(p.model || 'no model configured') + '</div>'
+        + '<div class="foot"><b>' + p.task_count + '</b> assigned</div></div>';
+    }).join('');
+    drawThreads();
+  }
+
+  // Silence read as "no checks ran". Say the thesis is fine when it is.
+  function thesisBadge(s) {
+    var th = s.thesis;
+    if (!th.exists) return '<span class="pill unset"><span class="d"></span>no thesis</span>';
+    if (!th.read_only) return '<span class="pill unset"><span class="d"></span>thesis writable</span>';
+    return '<span class="pill local"><span class="d"></span>thesis sealed</span>';
+  }
+
+  function renderStrip(s) {
+    el('strip').innerHTML = s.board.columns.map(function (c) {
+      var cls = c.key === 'blocked' && c.tasks.length ? ' has-blocked'
+              : c.key === 'done' && c.tasks.length ? ' has-done' : '';
+      return '<div class="stat' + cls + '"><div class="n">' + c.tasks.length + '</div>'
+        + '<div class="l">' + esc(c.label) + '</div></div>';
+    }).join('');
+  }
+
+  function drawThreads() {
+    var grid = el('grid'), svg = el('threads');
+    var hub = grid.querySelector('.card.hub');
+    svg.innerHTML = '';
+    if (!hub) return;
+    var g = grid.getBoundingClientRect();
+    svg.setAttribute('width', g.width); svg.setAttribute('height', g.height);
+    var h = hub.getBoundingClientRect();
+    var hx = h.left + h.width / 2 - g.left, hy = h.top + h.height / 2 - g.top;
+    grid.querySelectorAll('.card:not(.hub)').forEach(function (c) {
+      var r = c.getBoundingClientRect();
+      if (!r.width) return;
+      var sx = r.left + r.width / 2 - g.left, sy = r.top + r.height / 2 - g.top;
+      var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', 'M ' + hx + ' ' + hy + ' Q ' + ((hx + sx) / 2) + ' '
+        + (((hy + sy) / 2) - 12) + ' ' + sx + ' ' + sy);
+      svg.appendChild(p);
+    });
+  }
+
+  // ---- windows ----------------------------------------------------------
+  function windowContent(kind, name) {
+    var s = state;
+    if (kind === 'board') {
+      return { kicker: 'kanban.db · ' + s.view.name, title: 'PM window',
+               body: boardHTML(s) + thesisSummaryHTML(s) + ledgerHTML(s) };
+    }
+    if (kind === 'design') {
+      // Async: the shell renders immediately, loadDesign() fills #designMount
+      // from /api/design. Deliberately NOT derived from `state`, so the 5s
+      // poll leaves it alone (see refreshOpenWindow).
+      return { kicker: 'design · ' + s.view.name, title: 'Design & UI studio',
+               body: '<div id="designMount"><div class="empty">Loading design surface…</div></div>' };
+    }
+    if (kind === 'router') {
+      return { kicker: 'router · ' + s.view.name, title: 'Model router',
+               body: routerFormHTML(s) };
+    }
+    var p = s.profiles.filter(function (x) { return x.name === name; })[0];
+    if (!p) return null;
+    return {
+      kicker: 'profile ' + p.name + ' · ' + (p.configured ? (p.local ? 'local' : 'cloud') : 'no model set'),
+      title: p.label, body: spokeHTML(p)
+    };
+  }
+
+  function openWindow(kind, name) {
+    if (!state) return;
+    var c = windowContent(kind, name);
+    if (!c) return;
+    openWin = { kind: kind, name: name };
+    el('winKicker').textContent = c.kicker;
+    el('winTitle').textContent = c.title;
+    el('winBody').innerHTML = c.body;
+    // .win-body is one persistent DOM node reused across every open/close —
+    // only its innerHTML is swapped, so the browser carries its scrollTop
+    // forward from whatever the PREVIOUS window left it at. Resetting it
+    // synchronously (even right after showModal(), same call stack) does
+    // NOT stick: the dialog hasn't finished laying out its now-visible
+    // content yet, and whatever settles that layout overwrites the reset —
+    // confirmed live by reading scrollTop back three ways (sync, and at
+    // 300ms) and seeing the old value survive every one of them until the
+    // reset was deferred past the current paint. A freshly opened window
+    // should always start at its own top, not buried mid-scroll — found by
+    // opening the board after scrolling the page: it opened past the new-
+    // task form and board entirely, straight into the thesis section.
+    el('win').showModal();
+    requestAnimationFrame(function () {
+      document.querySelector('.win-body').scrollTop = 0;
+    });
+    if (kind === 'design') loadDesign(currentView());
+    if (kind === 'router') loadRouterModels();
+  }
+
+  function refreshOpenWindow() {
+    // A live console shouldn't freeze a window at open time: if the dialog
+    // is up and the state changed underneath it, re-render its body.
+    if (!openWin || !el('win').open) return;
+    // The design window is fetched once, not derived from `state`, and holds
+    // live iframe previews + a device selection that a wholesale re-render
+    // would destroy every 5s. It doesn't need polling — design artifacts
+    // don't change under you mid-session — so leave it entirely alone. The
+    // router window holds a half-typed goal, model choices, and an
+    // in-progress planner call — same reasoning, same exclusion.
+    if (openWin.kind === 'design' || openWin.kind === 'router') return;
+    var c = windowContent(openWin.kind, openWin.name);
+    if (!c) return;
+    // Don't wipe a half-typed prompt when a poll lands mid-thought.
+    var nt = document.getElementById('ntPrompt');
+    // humanOnly is the one that MUST survive: losing dispatch-now files a
+    // task one grooming step later than intended; losing human-only files
+    // a dispatchable task the user believed was locked.
+    var keep = nt ? { val: nt.value, focus: document.activeElement === nt,
+                      assignee: (document.getElementById('ntAssignee') || {}).value,
+                      model: (document.getElementById('ntModel') || {}).value,
+                      dispatch: (document.getElementById('ntDispatch') || {}).checked,
+                      humanOnly: (document.getElementById('ntHumanOnly') || {}).checked } : null;
+    // Same problem for an expanded artifact panel: it's cached client-side,
+    // so re-expanding costs nothing, but silently collapsing something the
+    // user just opened every 5s reads as broken, not "live".
+    var expandedArtifacts = [];
+    document.querySelectorAll('.artifact-slot').forEach(function (s) {
+      if (s.innerHTML) expandedArtifacts.push(s.getAttribute('data-slot'));
+    });
+    // Health results are one-shot fetches with no cache; restore the
+    // rendered HTML directly rather than silently discarding the answer
+    // the user just asked for.
+    var healthResults = {};
+    document.querySelectorAll('.health-slot').forEach(function (s) {
+      if (s.innerHTML) healthResults[s.getAttribute('data-health-slot')] = s.innerHTML;
+    });
+    el('winKicker').textContent = c.kicker;
+    el('winBody').innerHTML = c.body;
+    if (keep) {
+      var nt2 = document.getElementById('ntPrompt');
+      var as2 = document.getElementById('ntAssignee');
+      var dp2 = document.getElementById('ntDispatch');
+      if (nt2) { nt2.value = keep.val; if (keep.focus) nt2.focus(); }
+      if (as2 && keep.assignee) as2.value = keep.assignee;
+      if (dp2) dp2.checked = !!keep.dispatch;
+      var ho2 = document.getElementById('ntHumanOnly');
+      if (ho2) ho2.checked = !!keep.humanOnly;
+      // The fresh render always starts the model picker disabled/empty
+      // (assignee reset to ''), so it needs rebuilding against the
+      // RESTORED assignee, then re-selecting whatever model was chosen.
+      if (keep.assignee) {
+        ensureModels(function () { refreshModelPicker(keep.assignee, keep.model); });
+        refreshModelPicker(keep.assignee, keep.model);
+      }
+    }
+    Object.keys(healthResults).forEach(function (n) {
+      var s2 = document.querySelector('.health-slot[data-health-slot="' + n + '"]');
+      if (s2) s2.innerHTML = healthResults[n];
+    });
+    expandedArtifacts.forEach(function (id) {
+      var btn = document.querySelector('[data-act="artifact"][data-id="' + id + '"]');
+      if (btn) toggleArtifact(btn);
+    });
+  }
+
+  // ---- edits ------------------------------------------------------------
+  function showActMsg(ok, msg) {
+    var m = document.getElementById('actMsg');
+    if (!m) return;
+    m.className = 'act-msg ' + (ok ? 'ok' : 'err');
+    m.textContent = msg || (ok ? 'done' : 'failed');
+    // errors persist until the next action; successes clear after a beat
+    if (ok) setTimeout(function () { if (m.isConnected) m.className = 'act-msg'; }, 6000);
+  }
+
+  var postBusy = false;
+  function post(payload, onOk) {
+    if (postBusy) return;           // one edit at a time; the CLI isn't instant
+    postBusy = true;
+    fetch('/api/kanban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-GT-Console': '1' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        showActMsg(res.ok, res.message);
+        if (res.ok && onOk) onOk();
+        lastRenderKey = '';           // force a re-render with the new state
+        refresh();
+      })
+      .catch(function (e) { showActMsg(false, String(e)); })
+      .finally(function () { postBusy = false; });
+  }
+
+  var artifactCache = {};   // task_id -> parsed response, so re-clicking doesn't re-fetch
+
+  function fmtTokens(n) {
+    if (n == null) return '?';
+    return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+  }
+
+  function runCostHTML(runs) {
+    if (!runs || !runs.length) return '';
+    return runs.map(function (r) {
+      var dur = r.duration_s != null ? r.duration_s + 's' : 'in progress';
+      if (!r.cost) {
+        return '<div class="who">' + esc(r.profile) + ' · ' + esc(r.status) + ' · ' + dur
+          + ' · cost unavailable</div>';
+      }
+      var c = r.cost;
+      // Bake-off runs cost cents; two decimals renders those as "$0.00",
+      // which reads as free. Show four below a cent.
+      var cn = Number(c.cost_usd);
+      // cost_priced=false means Hermes has NO price-table entry for this
+      // model (confirmed live for claude-fable-5 and one Haiku snapshot id
+      // — a 54K-output-token run reported literally $0.00). Showing that as
+      // a dollar figure is worse than showing nothing: it looks like real
+      // data saying "this was free," which it almost certainly wasn't.
+      var costStr = c.cost_priced === false
+        ? 'cost unpriced (no rate for ' + esc(c.model || 'this model') + ')'
+        : (c.cost_usd != null && !isNaN(cn))
+          ? (c.cost_is_estimate ? '~$' : '$') + cn.toFixed(cn > 0 && cn < 0.01 ? 4 : 2)
+          : 'cost unknown';
+      return '<div class="who">' + esc(r.profile) + ' (' + esc(c.model || '?') + ') · '
+        + esc(r.status) + ' · ' + dur + ' · ' + (c.api_calls || 0) + ' calls · '
+        + fmtTokens(c.input_tokens) + ' in / ' + fmtTokens(c.output_tokens) + ' out'
+        + (c.cache_read_tokens ? ' / ' + fmtTokens(c.cache_read_tokens) + ' cached' : '')
+        + ' · ' + costStr + '</div>';
+    }).join('');
+  }
+
+  function artifactHTML(a) {
+    var cost = runCostHTML(a.runs);
+    if (!a.exists) {
+      return (cost ? '<div class="win-mono" style="margin-top:8px">' + cost + '</div>' : '')
+        + '<div class="empty" style="padding:10px 0;text-align:left">'
+        + esc(a.note || 'nothing to show') + '</div>';
+    }
+    var commits = a.commits.map(function (c) {
+      return '<div class="who">' + c.sha + '  ' + esc(c.author) + '  '
+        + new Date(c.at * 1000).toLocaleString() + '</div><p style="margin:2px 0 8px">'
+        + esc(c.subject) + '</p>';
+    }).join('');
+    return (cost ? '<div class="win-mono" style="margin-top:8px">' + cost + '</div>' : '')
+      + '<div class="win-mono" style="margin-top:8px">branch: ' + esc(a.branch) + '</div>'
+      + (commits || '<p class="who">no commits found on this branch</p>')
+      + (a.diff_stat ? '<div class="win-mono">' + esc(a.diff_stat) + '</div>' : '');
+  }
+
+  function toggleArtifact(btn) {
+    var id = btn.getAttribute('data-id');
+    var slot = document.querySelector('.artifact-slot[data-slot="' + id + '"]');
+    if (!slot) return;
+    if (slot.innerHTML) { slot.innerHTML = ''; btn.textContent = 'view run ⌄'; return; }
+    btn.textContent = 'loading…';
+    var render = function (data) {
+      slot.innerHTML = artifactHTML(data);
+      btn.textContent = 'hide run ⌃';
+    };
+    // A running task's cost is still accumulating — caching it would freeze
+    // the number at whatever it was on first view, including across the
+    // poll-driven re-expand that keeps this panel open. done/review tasks
+    // are finished; their numbers can't change, so cache those.
+    var ticket = state.profiles.reduce(function (acc, p) {
+      return acc || p.tasks.find(function (x) { return x.id === id; });
+    }, null) || (state.board.columns.reduce(function (acc, c) {
+      return acc || c.tasks.find(function (x) { return x.id === id; });
+    }, null));
+    var live = ticket && ticket.status === 'running';
+    if (!live && artifactCache[id]) return render(artifactCache[id]);
+    fetch('/api/artifact?task_id=' + encodeURIComponent(id), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { if (!live) artifactCache[id] = data; render(data); })
+      .catch(function (e) { slot.innerHTML = '<div class="empty">' + esc(String(e)) + '</div>';
+        btn.textContent = 'view run ⌄'; });
+  }
+
+  function checkHealth(btn) {
+    var name = btn.getAttribute('data-id');
+    var slot = document.querySelector('.health-slot[data-health-slot="' + name + '"]');
+    if (!slot) return;
+    btn.disabled = true;
+    btn.textContent = 'checking…';
+    fetch('/api/health?profile=' + encodeURIComponent(name), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (h) {
+        var cls = h.ok === true ? 'good' : h.ok === false ? 'crit' : 'warn';
+        slot.innerHTML = '<div class="alert ' + cls + '" style="margin:8px 0 0">'
+          + esc(h.detail || h.error || 'no detail') + '</div>';
+      })
+      .catch(function (e) {
+        slot.innerHTML = '<div class="alert crit" style="margin:8px 0 0">' + esc(String(e)) + '</div>';
+      })
+      .finally(function () { btn.disabled = false; btn.textContent = 'check dispatch health'; });
+  }
+
+  function fetchCost(btn) {
+    var slot = document.querySelector('.cost-slot[data-cost-slot="1"]');
+    if (!slot) return;
+    btn.disabled = true;
+    slot.textContent = 'summing runs…';
+    fetch('/api/cost?view=' + encodeURIComponent(currentView()), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (c) {
+        if (c.error) { slot.textContent = c.error; return; }
+        slot.innerHTML = '<b>' + (c.has_estimates ? '~$' : '$') + (c.total_usd || 0).toFixed(2)
+          + '</b> across ' + c.runs_counted + ' run' + (c.runs_counted === 1 ? '' : 's')
+          + ' · ' + c.tasks_with_cost + '/' + c.tasks_scoped + ' task' + (c.tasks_scoped === 1 ? '' : 's')
+          + ' with recorded cost'
+          // unpriced_runs: models Hermes has no rate for (new/uncommon ones)
+          // are excluded from the total rather than counted as free — say so,
+          // or "$2.86 total" reads as the whole spend when it's actually a
+          // floor.
+          + (c.unpriced_runs ? ' <span style="color:var(--warn)">· ' + c.unpriced_runs
+              + ' run' + (c.unpriced_runs === 1 ? '' : 's') + ' excluded (unpriced model — '
+              + 'total is a floor, not the full spend)</span>' : '');
+      })
+      .catch(function (e) { slot.textContent = String(e); })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  function runReleaseCheck(btn) {
+    var slot = document.querySelector('.release-slot[data-release-slot="1"]');
+    if (!slot) return;
+    btn.disabled = true;
+    slot.textContent = 'filing…';
+    fetch('/api/kanban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-GT-Console': '1' },
+      body: JSON.stringify({ action: 'release_conformance', view: currentView() })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        slot.textContent = d.message || (d.ok ? 'filed' : 'failed');
+        showActMsg(d.ok, d.message);
+        if (d.ok) { lastRenderKey = ''; refresh(); }   // board picks up the new task
+      })
+      .catch(function (e) { slot.textContent = String(e); })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  function handleAction(btn) {
+    var act = btn.getAttribute('data-act');
+    if (act === 'artifact') return toggleArtifact(btn);
+    if (act === 'cost') return fetchCost(btn);
+    if (act === 'release-check') return runReleaseCheck(btn);
+    if (act === 'dzc-copy') return copyThesisCheck();
+    if (act === 'route-go') return runRoute(btn);
+    if (act === 'health') return checkHealth(btn);
+    if (act === 'dz-dev') return setDevice(btn.getAttribute('data-file'),
+                                           parseInt(btn.getAttribute('data-w'), 10));
+    if (act === 'create') {
+      // Chat-prompt convention: first line is the title, everything after
+      // the first newline is the task's full spec (--body). A one-liner
+      // behaves exactly like the old single-field form — title only, no
+      // body — so nothing regresses for the "just a title" case.
+      var raw = (document.getElementById('ntPrompt') || {}).value || '';
+      var nl = raw.indexOf('\n');
+      var title = (nl === -1 ? raw : raw.slice(0, nl)).trim();
+      var promptBody = (nl === -1 ? '' : raw.slice(nl + 1).trim());
+      if (!title) return showActMsg(false, 'describe the task — first line becomes the title');
+      var payload = { action: 'create', title: title };
+      if (promptBody) payload.body = promptBody;
+      var assignee = (document.getElementById('ntAssignee') || {}).value;
+      if (assignee) payload.assignee = assignee;
+      var modelSel = document.getElementById('ntModel');
+      if (modelSel && !modelSel.disabled && modelSel.value) payload.model = modelSel.value;
+      if (state.view.kind === 'hermes') payload.project = state.view.key;
+      // Explicit opt-in. The server holds in triage unless it sees this,
+      // so an omitted field can never mean "start an agent".
+      if ((document.getElementById('ntDispatch') || {}).checked) payload.dispatch = true;
+      if ((document.getElementById('ntHumanOnly') || {}).checked) payload.human_only = true;
+      return post(payload, function () {
+        var f = document.getElementById('ntPrompt');
+        if (f) f.value = '';
+        var ho = document.getElementById('ntHumanOnly');
+        if (ho) ho.checked = false;
+      });
+    }
+    var id = btn.getAttribute('data-id');
+    if (!id) return;
+    if (act === 'block') {
+      var reason = prompt('Block reason (required):');
+      if (!reason || !reason.trim()) return;
+      return post({ action: 'block', task_id: id, reason: reason.trim() });
+    }
+    if (act === 'specify') {
+      if (!confirm('This calls an LLM to flesh out the spec, then the '
+        + 'dispatcher promotes it to Ready and a worker may claim it within '
+        + 'seconds — independent of the Backlog automation setting. Proceed?')) return;
+      return post({ action: 'specify', task_id: id });
+    }
+    if (act === 'request_changes') {
+      var changes = prompt('What changes are required?');
+      if (!changes || !changes.trim()) return;
+      return post({ action: 'request_changes', task_id: id, reason: changes.trim() });
+    }
+    if (act === 'complete') {
+      var summary = prompt('One-line summary (optional):') || '';
+      return post({ action: 'complete', task_id: id, summary: summary.trim() });
+    }
+    if (act === 'send_to_review') {
+      if (!confirm('File a gt-review task whose acceptance criteria are this '
+        + 'project\'s gold-thesis rules (one PASS/FAIL each), linked to this '
+        + 'deliverable? It parks in Backlog — you dispatch it when ready.')) return;
+      return post({ action: 'send_to_review', task_id: id });
+    }
+    if (act === 'escalate') {
+      var model = btn.getAttribute('data-model');
+      if (!confirm('The local model failed this task. Pin it to ' + model
+        + ' (cloud, billable) and return it to Ready for redispatch?')) return;
+      return post({ action: 'escalate', task_id: id, model: model });
+    }
+    post({ action: act, task_id: id });
+  }
+
+  var PROFILE_NAMES = ['gt-pm', 'gt-research', 'gt-infra', 'gt-bakeoff', 'gt-review', 'gt-dumbq'];
+
+  // Status → OPERATOR transitions. Deliberately no "start": ready→running
+  // happens when a worker claims a task through the dispatcher — `claim`
+  // demands worker ownership semantics (worktrees, run ids), and a human
+  // clicking a button is not a worker. The console is the PM surface:
+  // it dispatches, reviews, unblocks, and closes; it does not do the work.
+  function ticketActions(t) {
+    var acts = [];
+    var st = t.status;
+    if (st === 'triage') {
+      // NOT "promote" — the CLI rejects triage outright ("promote only
+      // applies to 'todo' or 'blocked'"). `specify` is the real triage
+      // verb, and it is NOT a safe grooming step: it calls an LLM to
+      // flesh out the spec, flips triage->todo, and the dispatcher then
+      // promotes todo->ready IMMEDIATELY (no separate confirmation),
+      // independent of auto_decompose. One click here can start a real
+      // worker within seconds — styled and labeled accordingly.
+      acts.push(['specify + dispatch ⚠', 'specify']);
+    } else if (st === 'todo' || st === 'scheduled') {
+      acts.push(['ready ›', 'promote']);
+    } else if (st === 'ready') {
+      acts.push(['done ✓', 'complete']);
+    } else if (st === 'running') {
+      acts.push(['review ›', 'request_review'], ['done ✓', 'complete']);
+    } else if (st === 'review') {
+      acts.push(['changes ‹', 'request_changes'], ['done ✓', 'complete']);
+    } else if (st === 'blocked') {
+      acts.push(['unblock ›', 'unblock']);
+    }
+    if (st !== 'done' && st !== 'blocked') acts.push(['block', 'block']);
+    return acts;
+  }
+
+  function ticketHTML(t, withAssignee) {
+    if (t.human_only) {
+      // No action buttons at all — not even a disabled one, which would
+      // still invite a click-and-see-what-happens. server.py refuses every
+      // write for a human-only task at /api/kanban regardless of what this
+      // markup does, but the UI shouldn't offer the illusion of a button
+      // that's secretly inert; that reads as a bug, not a safeguard.
+      return '<div class="ticket t-' + esc(t.status) + ' t-human-only">'
+        + '<p>' + esc(t.title || '(untitled)') + '</p>'
+        + '<span class="who">' + (withAssignee ? esc(t.assignee || 'unassigned') + ' · ' : '')
+        + esc(t.status) + '</span>'
+        + '<div class="human-only-note">🔒 human-only — resolve by hand, not from here'
+        + (t.status === 'blocked' && t.block_reason
+            ? '<br>' + esc(t.block_reason) : '') + '</div></div>';
+    }
+    var acts = ticketActions(t).map(function (a) {
+      return '<button class="tact' + (a[1] === 'block' ? ' danger'
+        : a[1] === 'specify' ? ' hazard' : '') + '" data-act="'
+        + a[1] + '" data-id="' + esc(t.id) + '" type="button">' + a[0] + '</button>';
+    }).join('');
+    var reassign = t.status === 'done' ? '' :
+      '<select class="tact" data-reassign="' + esc(t.id) + '" aria-label="Reassign">'
+      + '<option value="">⇄ assign</option>'
+      + PROFILE_NAMES.map(function (n) {
+          return '<option value="' + n + '"' + (n === t.assignee ? ' disabled' : '') + '>' + n + '</option>';
+        }).join('')
+      + '<option value="none">unassign</option></select>';
+    // Review gate: a done deliverable either has a linked thesis review or
+    // it doesn't. Show which, and offer a one-click thesis-aware review for
+    // the ones that don't — so an unreviewed deliverable is visible, not
+    // silently trusted (the Atelier run merged 1,708 lines with zero review).
+    var reviewBadge = t.status === 'done'
+      ? (t.reviewed
+          ? '<span class="rev-badge ok" title="a thesis review task is linked to this deliverable">✓ reviewed</span>'
+          : '<span class="rev-badge no" title="no thesis review has been filed for this deliverable">⚠ unreviewed</span>')
+      : '';
+    var reviewBtn = (t.status === 'done' && !t.reviewed)
+      ? '<button class="tact" data-act="send_to_review" data-id="' + esc(t.id)
+        + '" type="button" title="File a gt-review task whose acceptance criteria are the gold-thesis rules">thesis review →</button>'
+      : '';
+    return '<div class="ticket t-' + esc(t.status) + '">'
+      + (t.status === 'triage'
+          ? '<p class="who" style="margin:0 0 4px">not yet specified — a raw idea</p>' : '')
+      + '<p>' + esc(t.title || '(untitled)') + '</p>'
+      + '<span class="who">' + (withAssignee ? esc(t.assignee || 'unassigned') + ' · ' : '')
+      + esc(t.status) + '</span>' + reviewBadge
+      + (t.status === 'blocked' && t.block_reason
+          ? '<div class="blocked-reason">' + esc(t.block_reason) + '</div>' : '')
+      + (t.local_escalatable
+          ? '<div class="escalate-row"><span class="esc-label">local model failed —</span>'
+            + '<button class="tact escalate" data-act="escalate" data-model="claude-sonnet-5" '
+            + 'data-id="' + esc(t.id) + '" type="button" '
+            + 'title="Pin this task to Sonnet (cloud) and return it to ready">escalate → sonnet</button>'
+            + '<button class="tact escalate" data-act="escalate" data-model="claude-opus-5" '
+            + 'data-id="' + esc(t.id) + '" type="button" '
+            + 'title="Pin this task to Opus (cloud) and return it to ready">escalate → opus</button></div>'
+          : '')
+      + '<div class="tacts">' + acts + reassign + reviewBtn
+      + ((t.status === 'done' || t.status === 'running' || t.status === 'review')
+          ? '<button class="tact" data-act="artifact" data-id="' + esc(t.id) + '" type="button">view run ⌄</button>'
+          : '') + '</div>'
+      + '<div class="artifact-slot" data-slot="' + esc(t.id) + '"></div></div>';
+  }
+
+  // Model picker only makes real sense for profiles that actually have
+  // providers.ollama-local configured (see server.py's
+  // _LOCAL_OVERRIDE_PROFILES comment) — offering it for a profile without
+  // that block would be a control that looks live and fails at dispatch.
+  // Read from /api/models rather than a hardcoded client-side list: a
+  // hardcoded copy here is exactly what let this drift out of sync with
+  // server.py once before (this used to read ['gt-pm', 'gt-dumbq'] even
+  // after four more profiles gained the block on 2026-08-24, even though
+  // the server was already returning the current list on every /api/models
+  // call). Rendered disabled-with-explanation rather than hidden, so its
+  // absence doesn't read as "this feature doesn't exist."
+  var LOCAL_OVERRIDE_PROFILES_FALLBACK = ['gt-pm', 'gt-dumbq'];  // only until /api/models loads once
+  var modelsCache = null;   // {local:[...], local_provider, local_override_profiles} | 'loading' | null
+
+  function localOverrideProfiles() {
+    return (modelsCache && modelsCache !== 'loading' && modelsCache.local_override_profiles)
+      || LOCAL_OVERRIDE_PROFILES_FALLBACK;
+  }
+
+  function modelOptionsHTML(assignee) {
+    var profiles = localOverrideProfiles();
+    var enabled = assignee && profiles.indexOf(assignee) !== -1;
+    if (!enabled) {
+      return '<select id="ntModel" disabled title="Model override only works for '
+        + profiles.join(' / ') + ' — pick one of those as assignee first">'
+        + '<option>model: n/a for this assignee</option></select>';
+    }
+    if (!modelsCache || modelsCache === 'loading') {
+      return '<select id="ntModel" disabled><option>loading models…</option></select>';
+    }
+    var hints = modelsCache.local_hints || {};
+    var opts = modelsCache.local.map(function (m) {
+      var hint = hints[m];
+      var label = hint ? m + ' — ' + hint : m;
+      return '<option value="' + esc(m) + '">' + esc(label) + '</option>';
+    }).join('');
+    return '<select id="ntModel" title="Pin this one task to a specific local model for '
+      + 'early/exploratory work, without reassigning ' + esc(assignee) + '\'s default">'
+      + '<option value="">model: ' + esc(assignee) + ' default</option>' + opts + '</select>';
+  }
+
+  function ensureModels(rerender) {
+    if (modelsCache) { rerender(); return; }
+    modelsCache = 'loading';
+    fetch('/api/models', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (m) { modelsCache = m; rerender(); })
+      .catch(function () { modelsCache = { local: [], local_provider: '', local_override_profiles: [] }; rerender(); });
+  }
+
+  // Rebuilds #ntModel to match the current assignee (enabled/populated only
+  // for gt-pm/gt-dumbq) and, when the caller has one, re-selects a model —
+  // used both on assignee change and when restoring state across a poll.
+  function refreshModelPicker(assigneeVal, selectedModel) {
+    var old = document.getElementById('ntModel');
+    if (!old) return;
+    old.outerHTML = modelOptionsHTML(assigneeVal);
+    var now = document.getElementById('ntModel');
+    if (now && !now.disabled && selectedModel) now.value = selectedModel;
+  }
+
+  function newTaskFormHTML(s) {
+    var opts = PROFILE_NAMES.map(function (n) {
+      return '<option value="' + n + '">' + n + '</option>';
+    }).join('');
+    var scope = s.view.kind === 'hermes'
+      ? ' <span class="who">→ ' + esc(s.view.name) + '</span>' : '';
+    var kc = (state && state.health.kanban_config) || {};
+    var gw = state && state.health.gateway_running;
+    var parks = !(gw && kc.auto_decompose);
+    return '<h3>New task' + scope + '</h3>'
+      + '<div class="nt-form">'
+      + '<textarea id="ntPrompt" class="nt-prompt" maxlength="4200" rows="3" '
+      + 'placeholder="Describe what needs to be done. First line becomes the title; '
+      + 'the rest becomes the task\'s full spec — the more detail here, the better the '
+      + 'worker\'s first attempt. ⌘/Ctrl+Enter to file."></textarea>'
+      + '<div class="nt-row">'
+      + '<select id="ntAssignee"><option value="">unassigned</option>' + opts + '</select>'
+      + modelOptionsHTML('')
+      + '<label class="who" style="display:flex;align-items:center;gap:5px;cursor:pointer">'
+      + '<input type="checkbox" id="ntDispatch"> dispatch now</label>'
+      + '<label class="who" style="display:flex;align-items:center;gap:5px;cursor:pointer" '
+      + 'title="Never dispatchable from here — forces Backlog and overrides dispatch now">'
+      + '<input type="checkbox" id="ntHumanOnly"> 🔒 human-only</label>'
+      + '<button type="button" data-act="create">File task</button></div></div>'
+      + (!gw ? ''
+        : parks
+          ? '<p class="who" style="margin:-6px 0 14px">gateway is live — '
+            + '&ldquo;dispatch now&rdquo; files straight to Ready; unchecked holds in Backlog.</p>'
+          : '<p class="who" style="margin:-6px 0 14px;color:var(--warn)">gateway is live and '
+            + 'auto_decompose is on — <b>either way this task will be groomed and dispatched</b>. '
+            + 'The checkbox only skips the grooming step.</p>');
+  }
+
+  function boardHTML(s) {
+    var form = newTaskFormHTML(s);
+    if (!s.board.total) {
+      return form + '<h3>Board</h3><div class="empty">Nothing in this view yet — file the first task above.'
+        + (s.health.gateway_running === false
+            ? '<br>Remember the dispatcher: <code>hermes gateway start</code>.' : '') + '</div>';
+    }
+    var cols = s.board.columns.map(function (c) {
+      var tickets = c.tasks.length ? c.tasks.map(function (t) { return ticketHTML(t, true); }).join('')
+        : '<div class="col-empty">—</div>';
+      return '<div class="col c-' + c.key + '"><div class="col-head"><span>' + esc(c.label)
+        + '</span><span class="n">' + c.tasks.length + '</span></div>' + tickets + '</div>';
+    }).join('');
+    // Cost rollup is lazy (one sessions-export per run), so it's a button,
+    // not a polled number — never make the 5s tick shell out N times.
+    var cost = '<div class="costline"><button type="button" data-act="cost">∑ project cost</button>'
+      + '<span class="cost-slot" data-cost-slot="1"></span></div>';
+    // Release conformance needs a real project + thesis to check against —
+    // "All work"/"Unfiled"/an ad-hoc dir have neither, so this only renders
+    // for a real Hermes project view, same gate the server itself enforces.
+    var release = s.view.kind === 'hermes'
+      ? '<div class="costline"><button type="button" data-act="release-check">check release conformance</button>'
+        + '<span class="release-slot" data-release-slot="1"></span></div>'
+        + '<p class="rt-note" style="margin:-4px 0 14px">Per-task review checks one diff. '
+        + 'This checks whether everything currently MERGED satisfies the thesis together — '
+        + 'found necessary reviewing PourRate: a rule needing two separate deliverables can '
+        + 'pass every per-task review and still be unsatisfied as a whole.</p>'
+      : '';
+    return form + '<h3>Board</h3>' + cost + release
+      + '<div class="board-scroll"><div class="board">' + cols + '</div></div>';
+  }
+
+  function thesisSummaryHTML(s) {
+    var th = s.thesis;
+    if (!th.exists) {
+      return '<h3>Gold thesis</h3><div class="empty">No <code>GOLD_THESIS.md</code> at <code>'
+        + esc(th.path || '(no path)') + '</code>. Scaffold one with <code>install.sh</code>, '
+        + 'fill it in, then <code>chmod 444</code>.</div>';
+    }
+    var rules = th.rules.map(function (r) { return '<li><b>' + r.n + '.</b> ' + esc(r.title) + '</li>'; }).join('');
+    var dod = th.definition_of_done.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('');
+    return '<h3>Gold thesis</h3>'
+      + '<p class="who">Not editable here, deliberately — the board is editable, the thesis is not. '
+      + 'Amendments: chmod 644 → edit → chmod 444 → commit prefixed <b>thesis:</b>, by a human.</p>'
+      + '<div class="win-mono">' + esc(th.path) + '  ·  mode ' + esc(th.mode)
+      + (th.read_only ? '  ·  read-only' : '  ·  WRITABLE') + '</div>'
+      + (th.core_problem ? '<p>' + esc(th.core_problem) + '</p>' : '')
+      + (dod ? '<h3>Definition of done</h3><ul>' + dod + '</ul>' : '')
+      + (rules ? '<h3>Core rules</h3><ul>' + rules + '</ul>' : '');
+  }
+
+  function ledgerHTML(s) {
+    var L = s.ledger;
+    if (!L.exists) return '<h3>Lifecycle ledger</h3><div class="empty">' + esc(L.note) + '</div>';
+    var c = L.counts;
+    var rows = L.recent.slice().reverse().slice(0, 20).map(function (r) {
+      var when = new Date((r.ts || 0) * 1000).toLocaleTimeString();
+      return when + '  ' + String(r.event || '').padEnd(10) + '  ' + (r.task || '') + '  ' + (r.assignee || '');
+    }).join('\n');
+    return '<h3>Lifecycle ledger · last 24h</h3>'
+      + '<div class="win-mono">claimed ' + c.claimed + '   completed ' + c.completed
+      + '   blocked ' + c.blocked + '</div>'
+      + (rows ? '<div class="win-mono">' + esc(rows) + '</div>' : '');
+  }
+
+  function spokeHTML(p) {
+    var head = '<div class="win-mono">provider  ' + esc(p.provider || '—')
+      + '\nmodel     ' + esc(p.model || 'not configured')
+      + '\nassigned  ' + p.task_count + ' (this view)</div>';
+    if (!p.configured) {
+      head += '<div class="empty">No model set for this profile. '
+        + '<code>hermes -p ' + esc(p.name) + ' config set model.default &lt;model&gt;</code></div>';
+    } else {
+      head += '<div class="tacts" style="margin:8px 0 0">'
+        + '<button class="tact" data-act="health" data-id="' + esc(p.name)
+        + '" type="button">check dispatch health</button></div>'
+        + '<div class="health-slot" data-health-slot="' + esc(p.name) + '"></div>';
+    }
+    var work = p.tasks.length
+      ? p.tasks.map(function (t) { return ticketHTML(t, false); }).join('')
+      : '<div class="empty">Nothing assigned to ' + esc(p.name) + ' in this view.</div>';
+    // this spoke's own lifecycle trail, from the same ledger the PM sweep reads
+    var mine = (state.ledger.recent || []).filter(function (r) { return r.assignee === p.name; });
+    var trail = mine.length
+      ? '<div class="win-mono">' + esc(mine.slice(-10).reverse().map(function (r) {
+          return new Date((r.ts || 0) * 1000).toLocaleTimeString() + '  '
+            + String(r.event || '').padEnd(10) + '  ' + (r.task || '')
+            + (r.summary ? '  — ' + r.summary : r.reason ? '  — ' + r.reason : '');
+        }).join('\n')) + '</div>'
+      : '<div class="empty">No lifecycle events for this profile in the last 24h.</div>';
+    return head + '<h3>Assigned work</h3>' + work
+      + '<h3>Lifecycle · last 24h</h3>' + trail;
+  }
+
+  // ---- design studio ----------------------------------------------------
+  var DZ_DEVICES = [['Desktop', 1200], ['Tablet', 768], ['Mobile', 375]];
+  var dzState = {};   // "dir/file" -> selected device width, so switching frames keeps each choice
+
+  function loadDesign(view) {
+    var mount = document.getElementById('designMount');
+    if (!mount) return;
+    fetch('/api/design?view=' + encodeURIComponent(view), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!document.getElementById('designMount')) return;   // window closed mid-fetch
+        renderDesign(d);
+      })
+      .catch(function (e) {
+        var m = document.getElementById('designMount');
+        if (m) m.innerHTML = '<div class="empty">Could not load design surface: ' + esc(String(e)) + '</div>';
+      });
+  }
+
+  function renderDesign(d) {
+    var mount = document.getElementById('designMount');
+    if (!mount) return;
+    var out = '';
+    if (d.notes) {
+      out += '<p class="who" style="margin:0 0 14px">' + esc(d.notes) + '</p>';
+    }
+    var artifacts = (d.artifacts || []).filter(function (a) { return a.html; });
+    if (!artifacts.length) {
+      // When there are no frames, d.note already covers other_ui_source (the
+      // server folds it into one message) — don't say it twice.
+      out += '<div class="empty">' + esc(d.note || 'No design artifacts for this project yet.') + '</div>';
+    } else {
+      out += '<h3 class="dz-h" style="margin-top:0">Frames</h3>';
+      artifacts.forEach(function (a) { out += frameHTML(a); });
+      out += otherUiSourceHTML(d);
+    }
+    out += tokensHTML(d);
+    out += thesisCheckHTML(d);
+    mount.innerHTML = out;
+    // Fill each frame's iframe via srcdoc AFTER insertion. sandbox WITHOUT
+    // allow-same-origin: scripts run (so the real form is interactive) but
+    // the artifact gets an opaque origin and cannot touch this console's DOM
+    // or cookies — a faithful preview that still can't reach out of its box.
+    artifacts.forEach(function (a) {
+      var fr = mount.querySelector('iframe[data-file="' + cssAttr(frameKey(a)) + '"]');
+      if (fr) fr.srcdoc = a.html;
+    });
+  }
+
+  function cssAttr(s) { return String(s).replace(/"/g, '\\"'); }
+
+  // Scanning web/ and public/ alongside design/ means two artifacts can
+  // share a bare filename (this project has both public/index.html and,
+  // in principle, a design/index.html) — dzState and every data-file
+  // selector used to key on the bare name, so two same-named frames from
+  // different directories would collide: their device buttons and srcdoc
+  // fills would cross-wire. Key on dir+file instead.
+  function frameKey(a) { return (a.dir || '') + '/' + a.file; }
+
+  function frameHTML(a) {
+    var key = frameKey(a);
+    var w = dzState[key] || 1200;
+    var devs = DZ_DEVICES.map(function (dv) {
+      return '<button class="dz-dev' + (dv[1] === w ? ' sel' : '') + '" type="button" '
+        + 'data-act="dz-dev" data-file="' + esc(key) + '" data-w="' + dv[1] + '">'
+        + dv[0] + '</button>';
+    }).join('');
+    var kb = a.bytes != null ? (a.bytes / 1024).toFixed(1) + ' KB' : '';
+    var when = a.mtime ? new Date(a.mtime * 1000).toLocaleString() : '';
+    return '<div class="dz-canvas" data-frame="' + esc(key) + '">'
+      + '<div class="dz-toolbar">'
+      + '<span class="dz-fname">' + esc(a.dir ? a.dir + '/' : '') + esc(a.file) + '</span>'
+      + '<span class="dz-fmeta">' + esc([kb, when].filter(Boolean).join(' · ')) + '</span>'
+      + '<span class="dz-devs">' + devs + '</span></div>'
+      + '<div class="dz-frame-scroll"><div class="dz-frame" data-frame-box="' + esc(key) + '" '
+      + 'style="width:' + w + 'px;max-width:100%">'
+      + '<iframe data-file="' + esc(key) + '" title="Preview of ' + esc(a.file) + '" '
+      + 'sandbox="allow-scripts" loading="lazy"></iframe></div></div>'
+      + (a.truncated ? '<div class="dz-openraw">⚠ preview truncated at 600 KB</div>' : '')
+      + '</div>';
+  }
+
+  // Non-HTML UI source (React/Vue/Swift/Kotlin) the studio found but can't
+  // render — no browser executes .tsx/.swift without a build step. Shown
+  // only alongside real frames (the no-frames case already folds this into
+  // d.note server-side) so a reviewer looking at composer.html also learns
+  // there's a whole native age-gate implementation sitting right next to it.
+  function otherUiSourceHTML(d) {
+    var files = d.other_ui_source || [];
+    if (!files.length) return '';
+    var items = files.map(function (f) { return '<li><code>' + esc(f) + '</code></li>'; }).join('');
+    return '<div class="dz-other-src">'
+      + '<div class="lbl">Also found, not previewable here</div>'
+      + '<p>Real UI source in a format the studio can\'t run without a build step:</p>'
+      + '<ul>' + items + '</ul></div>';
+  }
+
+  function setDevice(key, w) {
+    dzState[key] = w;
+    var box = document.querySelector('.dz-frame[data-frame-box="' + cssAttr(key) + '"]');
+    if (box) box.style.width = w + 'px';
+    document.querySelectorAll('.dz-dev[data-file="' + cssAttr(key) + '"]').forEach(function (b) {
+      b.classList.toggle('sel', parseInt(b.getAttribute('data-w'), 10) === w);
+    });
+  }
+
+  function tokensHTML(d) {
+    var toks = d.tokens || [];
+    if (!toks.length && !d.font_stack) {
+      return d.artifacts && d.artifacts.length
+        ? '<h3 class="dz-h">Tokens</h3><div class="empty">No <code>:root</code> token '
+          + 'block found in the artifact — nothing to inspect.</div>'
+        : '';
+    }
+    var src = d.token_source
+      ? '<span class="dz-fmeta"> — parsed from ' + esc(d.token_source) + '\'s :root</span>' : '';
+    var out = '<h3 class="dz-h">Tokens' + src + '</h3>';
+
+    var colors = toks.filter(function (t) { return t.kind === 'color'; });
+    if (colors.length) {
+      out += '<div class="dz-swatches">' + colors.map(function (t) {
+        return '<div class="dz-sw"><div class="chip" style="background:' + esc(t.value) + '"></div>'
+          + '<div class="meta"><div class="tk">' + esc(t.name) + '</div>'
+          + '<div class="hex">' + esc(t.value) + '</div>'
+          + (t.use ? '<div class="use">' + esc(t.use) + '</div>' : '') + '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    if (d.font_stack) {
+      out += '<h3 class="dz-h">Type</h3>'
+        + '<div class="dz-fontstack">' + esc(d.font_stack) + '</div>'
+        + '<div class="dz-type" style="margin-top:12px">' + typeSpecimens(d.font_stack) + '</div>';
+    }
+
+    var spaces = toks.filter(function (t) { return t.kind === 'space'; });
+    if (spaces.length) out += '<h3 class="dz-h">Spacing</h3>' + scaleHTML(spaces);
+
+    var radii = toks.filter(function (t) { return t.kind === 'radius'; });
+    if (radii.length) {
+      out += '<h3 class="dz-h">Radius</h3><div class="dz-radii">' + radii.map(function (t) {
+        return '<div class="r"><div class="box" style="border-radius:' + esc(t.value) + '"></div>'
+          + '<div class="tk">' + esc(t.name) + '<br>' + esc(t.value) + '</div></div>';
+      }).join('') + '</div>';
+    }
+    return out;
+  }
+
+  // Render the type SCALE from the tokens if present, else a sensible fixed
+  // set — either way in the project's own font stack so it's a real specimen.
+  function typeSpecimens(fontStack) {
+    var sizes = [['1.75rem', 'page heading'], ['1.25rem', 'form title'],
+                 ['1rem', 'body / input'], ['0.8125rem', 'helper / caption']];
+    return sizes.map(function (s) {
+      return '<div class="row"><div class="spec" style="font:' + s[0] + '/1.2 '
+        + esc(fontStack) + '">Cats gossip at dawn — 0123</div>'
+        + '<div class="lbl">' + s[0] + ' · ' + s[1] + '</div></div>';
+    }).join('');
+  }
+
+  function scaleHTML(tokens) {
+    // px width of the bar = the token's px value, so the scale is visual.
+    return '<div class="dz-scale">' + tokens.map(function (t) {
+      var px = parseFloat(t.value);
+      var w = isNaN(px) ? 8 : Math.max(2, Math.min(px, 260));
+      return '<div class="row"><div class="bar" style="width:' + w + 'px"></div>'
+        + '<div class="tk">' + esc(t.name) + '  <b>' + esc(t.value) + '</b></div></div>';
+    }).join('') + '</div>';
+  }
+
+  // Human review surface: the thesis Core Rules as an eyes-on checklist you
+  // fill in while looking at the live frame above. Ephemeral by design — it
+  // survives the poll (the design window is excluded from re-render) but not
+  // a reload; "copy" lifts it into a review comment you can paste or attach.
+  // The board's "thesis review →" button is the AI counterpart; this is the
+  // one a person does.
+  function thesisCheckHTML(d) {
+    var rules = d.thesis_rules || [];
+    if (!rules.length) return '';
+    var rows = rules.map(function (r) {
+      var g = 'dzc-' + r.n;
+      return '<div class="dzc-row">'
+        + '<div class="dzc-rule"><b>Rule ' + r.n + '</b> ' + esc(r.title) + '</div>'
+        + '<div class="dzc-verdicts">'
+        + ['pass', 'fail', 'n/a'].map(function (v) {
+            return '<label class="dzc-v v-' + v.replace('/', '') + '"><input type="radio" name="'
+              + g + '" value="' + v + '"> ' + v + '</label>';
+          }).join('')
+        + '</div>'
+        + '<input type="text" class="dzc-note" data-rule="' + r.n
+        + '" placeholder="note / file+line (optional)" maxlength="300">'
+        + '</div>';
+    }).join('');
+    return '<h3 class="dz-h">Thesis check <span class="dz-fmeta">— your eyes-on verdict, '
+      + 'per rule</span></h3>'
+      + '<div class="dzc">' + rows
+      + '<div class="dzc-foot"><button type="button" data-act="dzc-copy">copy as review comment</button>'
+      + '<span class="dzc-copied" id="dzcCopied"></span></div></div>';
+  }
+
+  function copyThesisCheck() {
+    var rows = Array.from(document.querySelectorAll('.dzc-row'));
+    if (!rows.length) return;
+    var lines = ['Thesis conformance — eyes-on review (' + (state ? state.view.name : '') + ')', ''];
+    rows.forEach(function (row) {
+      var rule = row.querySelector('.dzc-rule').textContent.trim();
+      var checked = row.querySelector('input[type=radio]:checked');
+      var verdict = checked ? checked.value.toUpperCase() : '—';
+      var note = (row.querySelector('.dzc-note') || {}).value || '';
+      lines.push('[' + verdict + '] ' + rule + (note ? '  — ' + note : ''));
+    });
+    var text = lines.join('\n');
+    var done = function () {
+      var el2 = document.getElementById('dzcCopied');
+      if (el2) { el2.textContent = 'copied ✓'; setTimeout(function () { el2.textContent = ''; }, 3000); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(done);
+    } else { done(); }
+  }
+
+  // ---- model router ------------------------------------------------------
+  var routerModels = null;   // {models, default_planner, default_executor, assignees}
+
+  function routerFormHTML(s) {
+    var scope = s.view.kind === 'hermes'
+      ? ' <span class="who">→ ' + esc(s.view.name) + '</span>' : '';
+    return '<div class="rt">'
+      + '<h3 style="margin-top:0">Decompose a goal' + scope + '</h3>'
+      + '<p class="who" style="margin:0 0 12px">A strong model reads the goal (and this '
+      + 'project\'s gold thesis) and breaks it into subtasks; each subtask is filed pinned '
+      + 'to a model chosen for its difficulty. Planner and children all run in a '
+      + 'goldthread-covered spoke — guarded and thesis-anchored.</p>'
+      + '<textarea id="rtGoal" class="rt-goal" maxlength="4000" '
+      + 'placeholder="Describe the goal to decompose. The planner sees the gold thesis and must respect it."></textarea>'
+      + '<div class="rt-flow">'
+      + '<div class="rt-stage"><div class="lbl">Planner (decomposes)</div>'
+      + '<select id="rtPlanner"><option>loading…</option></select>'
+      + '<div class="sub">reads the goal + thesis, emits subtasks</div></div>'
+      + '<span class="rt-arrow">→</span>'
+      + '<div class="rt-stage"><div class="lbl">Executor (does the work)</div>'
+      + '<select id="rtExecutor"><option>loading…</option></select>'
+      + '<div class="sub">the standard tier; low→cheapest, high→planner when cost-aware is on</div></div>'
+      + '</div>'
+      + '<div class="rt-row">'
+      + '<label>assignee <select id="rtAssignee"></select></label>'
+      + '<label>subtasks <input type="number" id="rtMin" value="2" min="1" max="8" style="width:48px"> to '
+      + '<input type="number" id="rtMax" value="5" min="1" max="8" style="width:48px"></label>'
+      + '<label><input type="checkbox" id="rtCostAware" checked> cost-aware per-subtask routing</label>'
+      + '</div>'
+      + '<button class="rt-go" type="button" data-act="route-go">plan &amp; file subtasks</button>'
+      + '<div class="rt-note" id="rtNote"></div>'
+      + '<div class="rt-result" id="rtResult"></div></div>';
+  }
+
+  function loadRouterModels() {
+    var apply = function () {
+      var plan = document.getElementById('rtPlanner');
+      var exec = document.getElementById('rtExecutor');
+      var asg = document.getElementById('rtAssignee');
+      if (!plan || !routerModels) return;
+      var opts = routerModels.models.map(function (m) {
+        return '<option value="' + esc(m) + '">' + esc(m) + '</option>';
+      }).join('');
+      plan.innerHTML = opts; exec.innerHTML = opts;
+      if (routerModels.default_planner) plan.value = routerModels.default_planner;
+      if (routerModels.default_executor) exec.value = routerModels.default_executor;
+      var asgList = routerModels.assignees || [];
+      asg.innerHTML = asgList.length
+        ? asgList.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('')
+        : '<option value="">(no anthropic spoke available)</option>';
+      var note = document.getElementById('rtNote');
+      if (note) note.innerHTML = 'Planner and executors run on the <b>anthropic</b> provider, '
+        + 'so the assignee is limited to cloud spokes. The planner call is a real model run '
+        + '(~1&nbsp;min). Subtasks land in Backlog — nothing dispatches until you say so.';
+    };
+    if (routerModels) return apply();
+    fetch('/api/router-models', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (m) { routerModels = m; apply(); })
+      .catch(function () {
+        var note = document.getElementById('rtNote');
+        if (note) note.textContent = 'could not load models';
+      });
+  }
+
+  function runRoute(btn) {
+    var goal = (document.getElementById('rtGoal') || {}).value || '';
+    if (!goal.trim()) return showActMsg(false, 'describe the goal to decompose');
+    var payload = {
+      action: 'route', goal: goal.trim(),
+      planner: (document.getElementById('rtPlanner') || {}).value,
+      executor: (document.getElementById('rtExecutor') || {}).value,
+      assignee: (document.getElementById('rtAssignee') || {}).value,
+      cost_aware: (document.getElementById('rtCostAware') || {}).checked,
+      min: parseInt((document.getElementById('rtMin') || {}).value, 10) || 2,
+      max: parseInt((document.getElementById('rtMax') || {}).value, 10) || 5
+    };
+    if (state.view.kind === 'hermes') payload.project = state.view.key;
+    var res = document.getElementById('rtResult');
+    btn.disabled = true; btn.textContent = 'planning with ' + payload.planner + '…';
+    res.innerHTML = '<div class="empty">' + esc(payload.planner) + ' is reading the goal and '
+      + 'the thesis, then decomposing — a real model call, ~1 min. Subtasks appear here.</div>';
+    fetch('/api/kanban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-GT-Console': '1' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        showActMsg(d.ok, d.message);
+        res.innerHTML = d.ok ? routeResultHTML(d)
+          : '<div class="alert crit" style="margin:0">' + esc(d.message || 'planning failed') + '</div>';
+        lastRenderKey = ''; refresh();   // board picks up the new tasks
+      })
+      .catch(function (e) { res.innerHTML = '<div class="alert crit">' + esc(String(e)) + '</div>'; })
+      .finally(function () { btn.disabled = false; btn.textContent = 'plan & file subtasks'; });
+  }
+
+  function routeResultHTML(d) {
+    var diffColor = { low: 'var(--good)', medium: 'var(--cloud)', high: 'var(--gold-ink)' };
+    var subs = (d.subtasks || []).map(function (st, i) {
+      var badge = st.difficulty
+        ? '<span style="color:' + (diffColor[st.difficulty] || 'var(--ink-muted)') + '">'
+          + esc(st.difficulty) + '</span> · ' : '';
+      return '<div class="rt-sub' + (st.ok ? '' : ' fail') + '">'
+        + '<span class="n">' + (i + 1) + '</span>'
+        + '<span class="body"><span class="t">' + esc(st.title) + '</span>'
+        + '<span class="meta">' + badge + (st.ok
+            ? esc(st.model) + ' · ' + esc(st.id || '')
+            : 'FAILED: ' + esc(st.error || '')) + '</span></span></div>';
+    }).join('');
+    return '<div class="rt-parent">' + esc(d.planner) + ' → '
+      + (d.cost_aware ? 'cost-routed by difficulty' : 'all ' + esc(d.executor))
+      + ' · ' + d.filed_ok + '/' + d.filed_total + ' subtask(s) filed to '
+      + esc(d.assignee) + ', in Backlog</div>' + subs
+      + '<p class="rt-note">Each is a real kanban task under goldthread, referencing the '
+      + '<code>[plan]</code> task (' + esc(d.parent_id || '') + ') in its body for traceability — '
+      + 'deliberately NOT a Hermes dependency link, which would block them from ever '
+      + 'dispatching (the umbrella task is never meant to be completed itself). '
+      + 'Open the PM window to dispatch them.</p>';
+  }
+
+  // ---- polling ----------------------------------------------------------
+  function setLive(ok, text) {
+    el('live').className = 'live' + (ok ? '' : ' stale');
+    el('liveText').textContent = text;
+  }
+
+  function renderAll(s) {
+    renderRail(s); renderAlerts(s); renderGrid(s); renderStrip(s);
+    el('viewTitle').textContent = s.view.kind === 'all'
+      ? 'goldthread console' : s.view.name;
+    var p = s.view.path || s.hermes_home;
+    var shortP = p.length > 46 ? '…' + p.slice(-45) : p;
+    el('meta').innerHTML = '<b>' + s.board.total + '</b> in view · <b>'
+      + s.board.board_total + '</b> on board<br>'
+      + '<span title="' + esc(p) + '">' + esc(shortP) + '</span>';
+    refreshOpenWindow();
+  }
+
+  function refresh() {
+    var requested = currentView();
+    var seq = ++reqSeq;
+    fetch('/api/state?view=' + encodeURIComponent(requested), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (s) {
+        // Stale-response guard #1: if the user switched views while this
+        // fetch was in flight, a slow older response must not overwrite the
+        // newer view. Responses race; the hash is the source of truth.
+        if (requested !== currentView()) return;
+        // Stale-response guard #2: a scheduled poll and a post()-forced
+        // refresh can both be in flight at once for the SAME view; if the
+        // poll (issued first, describing pre-edit state) resolves AFTER the
+        // forced refresh (issued second, describing post-edit state), this
+        // response is older than what's already on screen even though nothing
+        // about the view changed. Only the most-recently-ISSUED request may
+        // apply its result — a real incident: a task the user just filed
+        // vanished from an open window until the next poll re-added it.
+        if (seq !== reqSeq) return;
+        state = s; lastOk = Date.now();
+        setLive(true, 'live');
+        // Re-render only when the content changed: a poll-driven innerHTML
+        // rebuild destroys keyboard focus every 5s for no visual gain.
+        var key = JSON.stringify([s.views, s.view, s.thesis, s.profiles, s.board, s.ledger, s.health]);
+        if (key === lastRenderKey) return;
+        var focused = document.activeElement;
+        var focusKey = focused && (focused.getAttribute('data-view')
+          || focused.getAttribute('data-name') || focused.id) || null;
+        lastRenderKey = key;
+        renderAll(s);
+        if (focusKey) {
+          var again = document.querySelector('[data-view="' + focusKey + '"], [data-name="'
+            + focusKey + '"], #' + CSS.escape(focusKey));
+          if (again) again.focus();
+        }
+      })
+      .catch(function () { setLive(false, 'disconnected — is server.py running?'); });
+  }
+
+  // ---- events -----------------------------------------------------------
+  function activate(t) {
+    var row = t.closest('[data-view]');
+    if (row) {
+      location.hash = 'v=' + row.getAttribute('data-view');
+      return; // hashchange triggers the refresh
+    }
+    var card = t.closest('[data-win]');
+    if (card) return openWindow(card.getAttribute('data-win'), card.getAttribute('data-name'));
+    if (t.closest('#strip')) return openWindow('board');
+  }
+  document.addEventListener('click', function (e) {
+    var actBtn = e.target.closest('[data-act]');
+    if (actBtn) { e.stopPropagation(); return handleAction(actBtn); }
+    activate(e.target);
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.id === 'ntAssignee') {
+      ensureModels(function () {
+        var a = (document.getElementById('ntAssignee') || {}).value;
+        refreshModelPicker(a, null);
+      });
+      refreshModelPicker(e.target.value, null);
+      return;
+    }
+    var sel = e.target.closest('[data-reassign]');
+    if (!sel || !sel.value) return;
+    post({ action: 'reassign', task_id: sel.getAttribute('data-reassign'), profile: sel.value });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.target.id === 'ntPrompt') {
+      e.preventDefault();
+      var b = document.querySelector('[data-act="create"]');
+      if (b) handleAction(b);
+      return;
+    }
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (!e.target.closest('[data-win], [data-view], #strip')) return;
+    e.preventDefault(); activate(e.target);
+  });
+  el('winClose').addEventListener('click', function () { openWin = null; el('win').close(); });
+  el('win').addEventListener('close', function () { openWin = null; });
+  window.addEventListener('resize', drawThreads);
+  window.addEventListener('hashchange', function () { lastRenderKey = ''; refresh(); });
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+  setInterval(function () {
+    if (lastOk && Date.now() - lastOk > POLL_MS * 3) setLive(false, 'stale');
+  }, POLL_MS);
+})();
+</script>
+</body>
+</html>

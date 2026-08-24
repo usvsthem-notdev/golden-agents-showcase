@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+bakeoff/.prompt_*.txt
+bakeoff/**/.prompt_*.txt
+bakeoff/pull.log
+.worktrees/
